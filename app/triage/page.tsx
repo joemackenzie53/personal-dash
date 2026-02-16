@@ -5,37 +5,27 @@ import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Notice } from "@/components/Notice";
 import { Badge } from "@/components/ui/Badge";
-import { fmtDate } from "@/lib/format";
-import { Select } from "@/components/ui/Select";
-import { Input } from "@/components/ui/Input";
+import { fmtDate, fmtTime, isAllDay } from "@/lib/format";
+import { EventDetailModal } from "@/components/EventDetailModal";
 
 type Settings = { connected: boolean; horizonDays: number };
 type EventRow = {
   event_key: string;
   title: string;
   start: string;
+  end: string;
+  all_day: number;
   category: string | null;
   is_major: number | null;
   project_id: string | null;
   notes_url: string | null;
   locked: number | null;
+  description: string | null;
+  location: string | null;
   deleted: number;
 };
 
 type ProjectRow = { id: string; name: string; status: string };
-
-const CATEGORIES = [
-  "unknown",
-  "holiday",
-  "birthday",
-  "anniversary",
-  "christmas",
-  "easter",
-  "valentines",
-  "travel",
-  "social",
-  "admin"
-];
 
 function addDays(d: Date, days: number) {
   const x = new Date(d);
@@ -49,6 +39,7 @@ export default function TriagePage() {
   const [projects, setProjects] = React.useState<ProjectRow[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [err, setErr] = React.useState<string | null>(null);
+  const [selectedEvent, setSelectedEvent] = React.useState<EventRow | null>(null);
 
   async function load() {
     setLoading(true);
@@ -76,33 +67,13 @@ export default function TriagePage() {
     load();
   }, []);
 
-  async function save(e: EventRow, patch: Partial<EventRow>) {
-    setErr(null);
-    try {
-      const next = { ...e, ...patch };
-      await api("/api/event-meta", {
-        method: "PUT",
-        body: JSON.stringify({
-          eventKey: next.event_key,
-          category: next.category,
-          isMajor: !!next.is_major,
-          projectId: next.project_id,
-          notesUrl: next.notes_url
-        })
-      });
-      await load();
-    } catch (err: any) {
-      setErr(err?.message || "Save failed");
-    }
-  }
-
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Triage</h1>
           <p className="mt-1 text-sm text-neutral-600">
-            Classify “unknown” events so the dashboard can surface the right prep actions.
+            Classify &quot;unknown&quot; events so the dashboard can surface the right prep actions.
           </p>
         </div>
         <div className="flex gap-2">
@@ -129,75 +100,48 @@ export default function TriagePage() {
 
       {loading && <div className="text-sm text-neutral-500">Loading…</div>}
 
-      {!loading && events.length === 0 && <Notice tone="green">No events need triage right now 🎉</Notice>}
+      {!loading && events.length === 0 && <Notice tone="green">No events need triage right now</Notice>}
 
-      <div className="space-y-3">
-        {events.slice(0, 80).map((e) => (
-          <Card key={e.event_key}>
-            <CardHeader>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="text-sm font-semibold">{e.title || "(no title)"}</div>
-                  <div className="text-xs text-neutral-600">{fmtDate(e.start)}</div>
-                </div>
-                <Badge tone="amber">unknown</Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid gap-2 sm:grid-cols-2">
-                <div className="space-y-1">
-                  <div className="text-xs font-medium text-neutral-600">Category</div>
-                  <Select
-                    value={e.category || "unknown"}
-                    onChange={(ev) => save(e, { category: ev.target.value })}
-                  >
-                    {CATEGORIES.map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </Select>
-                </div>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="text-sm font-semibold">Events needing triage</div>
+            <div className="text-xs text-neutral-500">{events.length} events</div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <ul className="space-y-2">
+            {events.slice(0, 80).map((e) => {
+              const allDay = isAllDay(e.start, e.all_day);
+              return (
+                <li
+                  key={e.event_key}
+                  className="cursor-pointer rounded-lg border border-neutral-200 px-3 py-2 transition-colors hover:bg-neutral-50"
+                  onClick={() => setSelectedEvent(e)}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-medium">{e.title || "(no title)"}</div>
+                      <div className="text-xs text-neutral-600">
+                        {fmtDate(e.start)}{" "}
+                        {!allDay ? <>• {fmtTime(e.start)}</> : <span className="text-neutral-500">(all day)</span>}
+                      </div>
+                    </div>
+                    <Badge tone="amber">unknown</Badge>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </CardContent>
+      </Card>
 
-                <div className="space-y-1">
-                  <div className="text-xs font-medium text-neutral-600">Project (optional)</div>
-                  <Select
-                    value={e.project_id || ""}
-                    onChange={(ev) => save(e, { project_id: ev.target.value || null })}
-                  >
-                    <option value="">None</option>
-                    {projects.map((p) => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
-                    ))}
-                  </Select>
-                </div>
-
-                <div className="space-y-1">
-                  <div className="text-xs font-medium text-neutral-600">Notes link (optional)</div>
-                  <Input
-                    placeholder="Google Doc/Sheet link"
-                    defaultValue={e.notes_url || ""}
-                    onBlur={(ev) => save(e, { notes_url: ev.target.value || null })}
-                  />
-                </div>
-
-                <div className="flex items-end gap-2">
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      defaultChecked={!!e.is_major}
-                      onChange={(ev) => save(e, { is_major: ev.target.checked ? 1 : 0 })}
-                    />
-                    Mark as major
-                  </label>
-                </div>
-              </div>
-
-              <div className="text-xs text-neutral-500">
-                When you triage an event, the app locks that classification so auto-sync won’t overwrite it.
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <EventDetailModal
+        event={selectedEvent}
+        projects={projects}
+        onClose={() => setSelectedEvent(null)}
+        onSaved={load}
+      />
     </div>
   );
 }
