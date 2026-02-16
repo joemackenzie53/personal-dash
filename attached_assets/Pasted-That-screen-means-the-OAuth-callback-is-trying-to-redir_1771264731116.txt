@@ -1,0 +1,55 @@
+That screen means the OAuth callback **is trying to redirect your browser to the app’s *internal* bind address** (`https://0.0.0.0:5000/settings?oauth=ok`) instead of your real public URL. So Google auth succeeded, but your app is building the “return URL” wrong.
+
+### Fix 1 (usually enough): set `APP_BASE_URL` in your *prod* environment
+
+In Replit, add this secret/env var for the prod instance (deployment or prod repl):
+
+* `APP_BASE_URL` = your *public* prod URL, e.g.
+  `https://your-app-name.replit.app` (or whatever prod URL you’re using)
+
+Then **restart/redeploy** so the server picks it up.
+
+Why this works: your callback route is defaulting to `0.0.0.0:5000` when it doesn’t know the external origin.
+
+Also ensure your existing prod secrets still match prod:
+
+* `GOOGLE_REDIRECT_URI = https://<prod-domain>/api/auth/google/callback`
+* (and that exact URI is whitelisted in Google Cloud)
+
+---
+
+### Fix 2 (code fix, if env var doesn’t change it): redirect relative using forwarded headers
+
+If it *still* redirects to `0.0.0.0:5000` after setting `APP_BASE_URL`, then the callback route is probably doing something like `new URL('/settings?oauth=ok', request.url)` — and in prod, `request.url` is the internal address.
+
+In that case, edit the OAuth callback route file (likely something like):
+`app/api/auth/google/callback/route.ts`
+
+Change the final redirect logic to use proxy headers (or your `APP_BASE_URL`) instead of `request.url`, e.g.:
+
+```ts
+const proto = request.headers.get("x-forwarded-proto") ?? "https";
+const host =
+  request.headers.get("x-forwarded-host") ??
+  request.headers.get("host");
+
+const origin = process.env.APP_BASE_URL ?? `${proto}://${host}`;
+return NextResponse.redirect(new URL("/settings?oauth=ok", origin));
+```
+
+Restart and retry.
+
+This is the robust fix for any reverse-proxy hosting (including Replit).
+
+---
+
+### Quick sanity check
+
+After you apply Fix 1, click Connect again and confirm the *post-consent* URL is now your real domain, not `0.0.0.0`.
+
+If you paste:
+
+* your **actual prod URL** (domain only), and
+* the name/path of the file that handles the Google callback (or the last 10 lines around the redirect)
+
+…I’ll tell you exactly which of the two fixes you need and the precise edit location in your project.
