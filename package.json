@@ -10,10 +10,12 @@
     "db:init": "node scripts/db-init.mjs"
   },
   "dependencies": {
+    "@types/pg": "^8.16.0",
     "clsx": "^2.1.1",
     "googleapis": "^143.0.0",
     "lucide-react": "^0.469.0",
     "next": "^15.1.0",
+    "pg": "^8.18.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "sqlite": "^5.1.1",
