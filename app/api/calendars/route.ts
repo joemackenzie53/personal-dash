@@ -5,7 +5,7 @@ import { getDb } from "@/lib/db";
 
 export async function GET() {
   try {
-    requireAuth();
+    await requireAuth();
     // Refresh from Google, then return
     const rows = await ensureCalendarsFromGoogle();
     return ok({ calendars: rows });

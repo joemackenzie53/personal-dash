@@ -4,7 +4,7 @@ import { ensureCalendarsFromGoogle, syncAllSelected } from "@/lib/sync";
 
 export async function POST() {
   try {
-    requireAuth();
+    await requireAuth();
     await ensureCalendarsFromGoogle();
     const result = await syncAllSelected();
     return ok({ ok: true, ...result });

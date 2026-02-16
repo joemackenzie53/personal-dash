@@ -22,7 +22,7 @@ export async function GET() {
 
 export async function PUT(req: Request) {
   try {
-    requireAuth();
+    await requireAuth();
     const body = await req.json();
     const db = await getDb();
 

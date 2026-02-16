@@ -5,7 +5,7 @@ import { newId } from "@/lib/id";
 
 export async function GET(req: Request) {
   try {
-    requireAuth();
+    await requireAuth();
     const url = new URL(req.url);
     const status = url.searchParams.get("status") || "active";
     const db = await getDb();
@@ -39,7 +39,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    requireAuth();
+    await requireAuth();
     const body = await req.json();
     const name = typeof body?.name === "string" ? body.name.trim() : "";
     if (!name) return bad(400, "name required");

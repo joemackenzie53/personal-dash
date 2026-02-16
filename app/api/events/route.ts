@@ -4,7 +4,7 @@ import { getDb } from "@/lib/db";
 
 export async function GET(req: Request) {
   try {
-    requireAuth();
+    await requireAuth();
     const url = new URL(req.url);
     const from = url.searchParams.get("from");
     const to = url.searchParams.get("to");

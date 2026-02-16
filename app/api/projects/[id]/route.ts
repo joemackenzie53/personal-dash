@@ -2,10 +2,10 @@ import { ok, handleError, bad } from "@/lib/http";
 import { requireAuth } from "@/lib/session";
 import { getDb, jsonStringify } from "@/lib/db";
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    requireAuth();
-    const id = params.id;
+    await requireAuth();
+    const { id } = await params;
     const body = await req.json();
     const db = await getDb();
 
@@ -33,11 +33,12 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   }
 }
 
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    requireAuth();
+    await requireAuth();
+    const { id } = await params;
     const db = await getDb();
-    await db.run("DELETE FROM projects WHERE id=$1", [params.id]);
+    await db.run("DELETE FROM projects WHERE id=$1", [id]);
     return ok({ ok: true });
   } catch (e) {
     return handleError(e);

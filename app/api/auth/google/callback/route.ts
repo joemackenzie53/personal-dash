@@ -17,7 +17,7 @@ export async function GET(req: Request) {
     return NextResponse.redirect(new URL(`/settings?oauth=error&reason=missing_code`, url.origin));
   }
 
-  const expectedState = readOAuthState();
+  const expectedState = await readOAuthState();
   if (!expectedState || !state || state !== expectedState) {
     return NextResponse.redirect(new URL(`/settings?oauth=error&reason=bad_state`, url.origin));
   }
@@ -32,8 +32,8 @@ export async function GET(req: Request) {
     accessTokenExpiry: tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : null
   });
 
-  clearOAuthState();
-  setSessionCookie();
+  await clearOAuthState();
+  await setSessionCookie();
 
   // Discover calendars + default selection
   await ensureCalendarsFromGoogle();

@@ -33,11 +33,11 @@ export function authIsRequired() {
   return !!process.env.APP_PASSWORD;
 }
 
-export function setSessionCookie() {
+export async function setSessionCookie() {
   const payload: SessionPayload = { v: 1, iat: Math.floor(Date.now() / 1000) };
   const body = b64url(Buffer.from(JSON.stringify(payload)));
   const sig = hmac(body, getSecret());
-  cookies().set(COOKIE_NAME, `${body}.${sig}`, {
+  (await cookies()).set(COOKIE_NAME, `${body}.${sig}`, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
@@ -46,14 +46,14 @@ export function setSessionCookie() {
   });
 }
 
-export function clearSessionCookie() {
-  cookies().set(COOKIE_NAME, "", { httpOnly: true, path: "/", maxAge: 0 });
+export async function clearSessionCookie() {
+  (await cookies()).set(COOKIE_NAME, "", { httpOnly: true, path: "/", maxAge: 0 });
 }
 
-export function isAuthed(): boolean {
+export async function isAuthed(): Promise<boolean> {
   if (!authIsRequired()) return true;
 
-  const c = cookies().get(COOKIE_NAME)?.value;
+  const c = (await cookies()).get(COOKIE_NAME)?.value;
   if (!c) return false;
   const [body, sig] = c.split(".");
   if (!body || !sig) return false;
@@ -70,8 +70,8 @@ export function isAuthed(): boolean {
   }
 }
 
-export function requireAuth() {
-  if (!isAuthed()) {
+export async function requireAuth() {
+  if (!(await isAuthed())) {
     const err = new Error("Unauthorized");
     // @ts-expect-error attach status
     err.status = 401;
@@ -79,8 +79,8 @@ export function requireAuth() {
   }
 }
 
-export function setOAuthState(state: string) {
-  cookies().set(STATE_COOKIE, state, {
+export async function setOAuthState(state: string) {
+  (await cookies()).set(STATE_COOKIE, state, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
@@ -89,10 +89,10 @@ export function setOAuthState(state: string) {
   });
 }
 
-export function readOAuthState(): string | null {
-  return cookies().get(STATE_COOKIE)?.value ?? null;
+export async function readOAuthState(): Promise<string | null> {
+  return (await cookies()).get(STATE_COOKIE)?.value ?? null;
 }
 
-export function clearOAuthState() {
-  cookies().set(STATE_COOKIE, "", { httpOnly: true, path: "/", maxAge: 0 });
+export async function clearOAuthState() {
+  (await cookies()).set(STATE_COOKIE, "", { httpOnly: true, path: "/", maxAge: 0 });
 }

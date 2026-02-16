@@ -4,7 +4,7 @@ import { getDb } from "@/lib/db";
 
 export async function PUT(req: Request) {
   try {
-    requireAuth();
+    await requireAuth();
     const body = await req.json();
     const eventKey = body?.eventKey;
     if (!eventKey || typeof eventKey !== "string") return bad(400, "eventKey required");

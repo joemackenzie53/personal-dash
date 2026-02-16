@@ -3,7 +3,7 @@ import { clearSessionCookie } from "@/lib/session";
 
 export async function POST() {
   try {
-    clearSessionCookie();
+    await clearSessionCookie();
     return ok({ ok: true });
   } catch (e) {
     return handleError(e);

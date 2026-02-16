@@ -4,7 +4,7 @@ import { getDb, jsonStringify } from "@/lib/db";
 
 export async function POST(req: Request) {
   try {
-    requireAuth();
+    await requireAuth();
     const body = await req.json();
     const ids = Array.isArray(body?.selectedCalendarIds) ? body.selectedCalendarIds : null;
     if (!ids) return bad(400, "selectedCalendarIds must be an array");

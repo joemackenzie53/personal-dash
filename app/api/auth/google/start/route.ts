@@ -6,7 +6,7 @@ import { setOAuthState } from "@/lib/session";
 export async function GET() {
   const oauth2 = getOAuthClient();
   const state = crypto.randomBytes(16).toString("hex");
-  setOAuthState(state);
+  await setOAuthState(state);
 
   const url = oauth2.generateAuthUrl({
     access_type: "offline",

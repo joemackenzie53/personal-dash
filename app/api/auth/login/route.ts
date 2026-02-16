@@ -5,7 +5,7 @@ export async function POST(req: Request) {
   try {
     if (!authIsRequired()) {
       // nothing to do, but allow clients to proceed
-      setSessionCookie();
+      await setSessionCookie();
       return ok({ ok: true });
     }
     const body = await req.json();
@@ -13,7 +13,7 @@ export async function POST(req: Request) {
     const expected = process.env.APP_PASSWORD || "";
     if (!expected) return bad(500, "APP_PASSWORD not set");
     if (password !== expected) return bad(401, "Invalid password");
-    setSessionCookie();
+    await setSessionCookie();
     return ok({ ok: true });
   } catch (e) {
     return handleError(e);
