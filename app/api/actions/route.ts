@@ -14,13 +14,14 @@ export async function GET(req: Request) {
     const db = await getDb();
     const where: string[] = [];
     const params: any[] = [];
+    let idx = 1;
 
     if (status !== "all") {
-      where.push("status = ?");
+      where.push(`status = $${idx++}`);
       params.push(status);
     }
     if (parentType && parentId) {
-      where.push("parent_type = ? AND parent_id = ?");
+      where.push(`parent_type = $${idx++} AND parent_id = $${idx++}`);
       params.push(parentType, parentId);
     }
 
@@ -30,7 +31,7 @@ export async function GET(req: Request) {
          due_at ASC,
          created_at DESC
        LIMIT 2000`,
-      ...params
+      params
     );
 
     const mapped = rows.map((r: any) => ({
@@ -72,19 +73,8 @@ export async function POST(req: Request) {
 
     await db.run(
       `INSERT INTO actions (id, title, status, priority, start_at, due_at, snooze_until, tags, parent_type, parent_id, reference_url, checklist, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
-      row.id,
-      row.title,
-      row.status,
-      row.priority,
-      row.start_at,
-      row.due_at,
-      row.snooze_until,
-      row.tags,
-      row.parent_type,
-      row.parent_id,
-      row.reference_url,
-      row.checklist
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW()::TEXT, NOW()::TEXT)`,
+      [row.id, row.title, row.status, row.priority, row.start_at, row.due_at, row.snooze_until, row.tags, row.parent_type, row.parent_id, row.reference_url, row.checklist]
     );
 
     return ok({ ok: true, id });

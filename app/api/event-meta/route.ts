@@ -15,32 +15,24 @@ export async function PUT(req: Request) {
 
     const db = await getDb();
 
-    const existing = await db.get("SELECT event_key FROM event_meta WHERE event_key=?", eventKey);
+    const existing = await db.get("SELECT event_key FROM event_meta WHERE event_key=$1", [eventKey]);
     if (existing) {
       await db.run(
         `UPDATE event_meta
-         SET category=COALESCE(?, category),
-             is_major=?,
-             project_id=?,
-             notes_url=?,
+         SET category=COALESCE($1, category),
+             is_major=$2,
+             project_id=$3,
+             notes_url=$4,
              locked=1,
-             updated_at=datetime('now')
-         WHERE event_key=?`,
-        category,
-        isMajor,
-        projectId,
-        notesUrl,
-        eventKey
+             updated_at=NOW()::TEXT
+         WHERE event_key=$5`,
+        [category, isMajor, projectId, notesUrl, eventKey]
       );
     } else {
       await db.run(
         `INSERT INTO event_meta (event_key, category, is_major, project_id, notes_url, locked, updated_at)
-         VALUES (?, ?, ?, ?, ?, 1, datetime('now'))`,
-        eventKey,
-        category || "unknown",
-        isMajor,
-        projectId,
-        notesUrl
+         VALUES ($1, $2, $3, $4, $5, 1, NOW()::TEXT)`,
+        [eventKey, category || "unknown", isMajor, projectId, notesUrl]
       );
     }
 

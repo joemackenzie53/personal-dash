@@ -1,38 +1,68 @@
-import path from "path";
 import fs from "fs";
-import sqlite3 from "sqlite3";
-import { open, Database } from "sqlite";
+import path from "path";
+import pg from "pg";
 
-let dbPromise: Promise<Database> | null = null;
+const { Pool } = pg;
 
-function getDbPath() {
-  const p = process.env.DB_PATH || path.join(process.cwd(), "data", "personal-dash.sqlite");
-  const dir = path.dirname(p);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  return p;
+let poolInstance: pg.Pool | null = null;
+let initialized = false;
+
+function getPool(): pg.Pool {
+  if (!poolInstance) {
+    poolInstance = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+    });
+  }
+  return poolInstance;
 }
 
-async function init(db: Database) {
+async function initSchema(pool: pg.Pool) {
+  if (initialized) return;
   const schemaPath = path.join(process.cwd(), "scripts", "schema.sql");
   const schema = fs.readFileSync(schemaPath, "utf-8");
-  await db.exec(schema);
-
-  // Ensure singleton config row exists
-  await db.run(
-    `INSERT OR IGNORE INTO user_config (id, horizon_days, refresh_interval_minutes, selected_calendar_ids)
-     VALUES (1, 182, 10, '[]')`
+  await pool.query(schema);
+  await pool.query(
+    `INSERT INTO user_config (id, horizon_days, refresh_interval_minutes, selected_calendar_ids)
+     VALUES (1, 182, 10, '[]')
+     ON CONFLICT DO NOTHING`
   );
+  initialized = true;
 }
 
-export async function getDb(): Promise<Database> {
+export interface DbWrapper {
+  query(sql: string, params?: any[]): Promise<pg.QueryResult>;
+  get<T = any>(sql: string, params?: any[]): Promise<T | undefined>;
+  all<T = any>(sql: string, params?: any[]): Promise<T[]>;
+  run(sql: string, params?: any[]): Promise<pg.QueryResult>;
+}
+
+let dbPromise: Promise<DbWrapper> | null = null;
+
+export async function getDb(): Promise<DbWrapper> {
   if (!dbPromise) {
     dbPromise = (async () => {
-      const db = await open({
-        filename: getDbPath(),
-        driver: sqlite3.Database
-      });
-      await init(db);
-      return db;
+      const pool = getPool();
+      await initSchema(pool);
+
+      const wrapper: DbWrapper = {
+        async query(sql: string, params?: any[]) {
+          return pool.query(sql, params);
+        },
+        async get<T = any>(sql: string, params?: any[]): Promise<T | undefined> {
+          const result = await pool.query(sql, params);
+          return result.rows[0] as T | undefined;
+        },
+        async all<T = any>(sql: string, params?: any[]): Promise<T[]> {
+          const result = await pool.query(sql, params);
+          return result.rows as T[];
+        },
+        async run(sql: string, params?: any[]) {
+          return pool.query(sql, params);
+        },
+      };
+
+      return wrapper;
     })();
   }
   return dbPromise;

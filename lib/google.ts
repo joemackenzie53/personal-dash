@@ -36,24 +36,17 @@ export async function upsertTokens(opts: {
   const accessTokenExpiry = opts.accessTokenExpiry ?? null;
 
   if (existing) {
-    // Keep existing refresh token if not provided
     const current = await db.get<{ refresh_token: string | null }>("SELECT refresh_token FROM oauth_tokens WHERE id = 1");
     const finalRefresh = refreshToken || current?.refresh_token || null;
     await db.run(
-      `UPDATE oauth_tokens SET refresh_token = ?, access_token = ?, access_token_expiry = ?, updated_at = ? WHERE id = 1`,
-      finalRefresh,
-      accessToken,
-      accessTokenExpiry,
-      now
+      `UPDATE oauth_tokens SET refresh_token = $1, access_token = $2, access_token_expiry = $3, updated_at = $4 WHERE id = 1`,
+      [finalRefresh, accessToken, accessTokenExpiry, now]
     );
   } else {
     await db.run(
       `INSERT INTO oauth_tokens (id, refresh_token, access_token, access_token_expiry, updated_at)
-       VALUES (1, ?, ?, ?, ?)`,
-      refreshToken,
-      accessToken,
-      accessTokenExpiry,
-      now
+       VALUES (1, $1, $2, $3, $4)`,
+      [refreshToken, accessToken, accessTokenExpiry, now]
     );
   }
 }

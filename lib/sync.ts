@@ -14,7 +14,6 @@ function addDays(d: Date, days: number) {
 
 function isUkHolidayCalendar(summary: string | null | undefined) {
   const s = (summary || "").toLowerCase();
-  // covers common Google naming
   return s.includes("holidays in united kingdom") || (s.includes("holidays") && s.includes("united kingdom")) || s.includes("uk holidays");
 }
 
@@ -32,20 +31,16 @@ export async function ensureCalendarsFromGoogle() {
 
     await db.run(
       `INSERT INTO calendars (calendar_id, summary, primary_flag, is_holiday, selected, updated_at)
-       VALUES (?, ?, ?, ?, 0, datetime('now'))
+       VALUES ($1, $2, $3, $4, 0, NOW()::TEXT)
        ON CONFLICT(calendar_id) DO UPDATE SET
          summary=excluded.summary,
          primary_flag=excluded.primary_flag,
          is_holiday=excluded.is_holiday,
-         updated_at=datetime('now')`,
-      c.id,
-      c.summary || c.id,
-      primaryFlag,
-      isHoliday
+         updated_at=NOW()::TEXT`,
+      [c.id, c.summary || c.id, primaryFlag, isHoliday]
     );
   }
 
-  // If user has no selected calendars yet, default to primary + UK holidays if present
   const cfg = await db.get<{ selected_calendar_ids: string }>("SELECT selected_calendar_ids FROM user_config WHERE id=1");
   const selectedIds = jsonParse<string[]>(cfg?.selected_calendar_ids, []);
   if (selectedIds.length === 0) {
@@ -53,18 +48,17 @@ export async function ensureCalendarsFromGoogle() {
       `SELECT calendar_id FROM calendars WHERE primary_flag=1 OR is_holiday=1`
     );
     const ids = defaults.map((r) => r.calendar_id);
-    await db.run(`UPDATE user_config SET selected_calendar_ids=? WHERE id=1`, jsonStringify(ids));
+    await db.run(`UPDATE user_config SET selected_calendar_ids=$1 WHERE id=1`, [jsonStringify(ids)]);
     await db.run(`UPDATE calendars SET selected=0`);
     if (ids.length) {
-      const placeholders = ids.map(() => "?").join(",");
-      await db.run(`UPDATE calendars SET selected=1 WHERE calendar_id IN (${placeholders})`, ...ids);
+      const placeholders = ids.map((_: any, i: number) => `$${i + 1}`).join(",");
+      await db.run(`UPDATE calendars SET selected=1 WHERE calendar_id IN (${placeholders})`, ids);
     }
   } else {
-    // reflect selection flags
     await db.run(`UPDATE calendars SET selected=0`);
     if (selectedIds.length) {
-      const placeholders = selectedIds.map(() => "?").join(",");
-      await db.run(`UPDATE calendars SET selected=1 WHERE calendar_id IN (${placeholders})`, ...selectedIds);
+      const placeholders = selectedIds.map((_: any, i: number) => `$${i + 1}`).join(",");
+      await db.run(`UPDATE calendars SET selected=1 WHERE calendar_id IN (${placeholders})`, selectedIds);
     }
   }
 
@@ -88,7 +82,7 @@ export async function syncAllSelected(): Promise<SyncResult> {
   const horizonDays = cfg?.horizon_days ?? 182;
   const selected = jsonParse<string[]>(cfg?.selected_calendar_ids, []);
   const now = new Date();
-  const windowStartDefault = addDays(now, -30); // buffer for edits near the past
+  const windowStartDefault = addDays(now, -30);
   const windowEndDefault = addDays(now, horizonDays);
 
   let calendarsSynced = 0;
@@ -99,23 +93,21 @@ export async function syncAllSelected(): Promise<SyncResult> {
     calendarsSynced++;
 
     const calRow = await db.get<{ summary: string; is_holiday: number }>(
-      "SELECT summary, is_holiday FROM calendars WHERE calendar_id=?",
-      calendarId
+      "SELECT summary, is_holiday FROM calendars WHERE calendar_id=$1",
+      [calendarId]
     );
     const calendarSummary = calRow?.summary ?? calendarId;
     const calendarIsHoliday = (calRow?.is_holiday ?? 0) === 1;
 
-    // Determine whether to do incremental sync or full sync
     const state = await db.get<{ sync_token: string | null; window_start: string | null; window_end: string | null }>(
-      "SELECT sync_token, window_start, window_end FROM calendar_sync_state WHERE calendar_id=?",
-      calendarId
+      "SELECT sync_token, window_start, window_end FROM calendar_sync_state WHERE calendar_id=$1",
+      [calendarId]
     );
 
     let syncToken: string | null = state?.sync_token ?? null;
     let windowStart = state?.window_start ? new Date(state.window_start) : windowStartDefault;
     let windowEnd = state?.window_end ? new Date(state.window_end) : windowEndDefault;
 
-    // roll the window if it's too old (keeps timeMin/timeMax stable for incremental sync)
     const ageDays = (now.getTime() - windowStart.getTime()) / (1000 * 60 * 60 * 24);
     if (!syncToken || ageDays > 7 || now > windowEnd) {
       syncToken = null;
@@ -145,7 +137,6 @@ export async function syncAllSelected(): Promise<SyncResult> {
     try {
       res = await fetchPage();
     } catch (e: any) {
-      // If sync token expired, Google returns 410. Do a full sync.
       if (e?.code === 410 || e?.status === 410) {
         syncToken = null;
         pageToken = undefined;
@@ -175,76 +166,55 @@ export async function syncAllSelected(): Promise<SyncResult> {
         const end = ev.end?.dateTime || ev.end?.date || null;
 
         await db.run(
-          `INSERT INTO events (event_key, calendar_id, google_event_id, ical_uid, title, description, location, start, end, all_day, updated, status, deleted, raw_json)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `INSERT INTO events (event_key, calendar_id, google_event_id, ical_uid, title, description, location, "start", "end", all_day, updated, status, deleted, raw_json)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
            ON CONFLICT(event_key) DO UPDATE SET
              ical_uid=excluded.ical_uid,
              title=excluded.title,
              description=excluded.description,
              location=excluded.location,
-             start=excluded.start,
-             end=excluded.end,
+             "start"=excluded."start",
+             "end"=excluded."end",
              all_day=excluded.all_day,
              updated=excluded.updated,
              status=excluded.status,
              deleted=excluded.deleted,
              raw_json=excluded.raw_json`,
-          eventKey,
-          calendarId,
-          ev.id,
-          ev.iCalUID || null,
-          ev.summary || "",
-          ev.description || "",
-          ev.location || "",
-          start,
-          end,
-          allDay,
-          ev.updated || null,
-          status,
-          deleted,
-          JSON.stringify(ev)
+          [eventKey, calendarId, ev.id, ev.iCalUID || null, ev.summary || "", ev.description || "", ev.location || "", start, end, allDay, ev.updated || null, status, deleted, JSON.stringify(ev)]
         );
         eventsUpserted++;
         if (deleted) eventsDeletedMarked++;
 
-        // Ensure event_meta exists, but do not overwrite if locked by user
-        const meta = await db.get<{ locked: number }>("SELECT locked FROM event_meta WHERE event_key=?", eventKey);
+        const meta = await db.get<{ locked: number }>("SELECT locked FROM event_meta WHERE event_key=$1", [eventKey]);
         if (!meta) {
           const category = classifyEvent({ title: ev.summary || "", calendarIsHoliday, calendarSummary });
           await db.run(
             `INSERT INTO event_meta (event_key, category, is_major, project_id, notes_url, locked, updated_at)
-             VALUES (?, ?, 0, NULL, NULL, 0, datetime('now'))`,
-            eventKey,
-            category
+             VALUES ($1, $2, 0, NULL, NULL, 0, NOW()::TEXT)`,
+            [eventKey, category]
           );
         } else if (meta.locked === 0) {
           const category = classifyEvent({ title: ev.summary || "", calendarIsHoliday, calendarSummary });
           await db.run(
-            `UPDATE event_meta SET category=?, updated_at=datetime('now') WHERE event_key=?`,
-            category,
-            eventKey
+            `UPDATE event_meta SET category=$1, updated_at=NOW()::TEXT WHERE event_key=$2`,
+            [category, eventKey]
           );
         }
       }
 
       pageToken = res.data.nextPageToken || undefined;
       if (!pageToken) {
-        // Store sync token + window
         const nextSyncToken = res.data.nextSyncToken || null;
         const lastSyncAt = new Date().toISOString();
         await db.run(
           `INSERT INTO calendar_sync_state (calendar_id, sync_token, window_start, window_end, last_sync_at)
-           VALUES (?, ?, ?, ?, ?)
+           VALUES ($1, $2, $3, $4, $5)
            ON CONFLICT(calendar_id) DO UPDATE SET
              sync_token=excluded.sync_token,
              window_start=excluded.window_start,
              window_end=excluded.window_end,
              last_sync_at=excluded.last_sync_at`,
-          calendarId,
-          nextSyncToken,
-          timeMin,
-          timeMax,
-          lastSyncAt
+          [calendarId, nextSyncToken, timeMin, timeMax, lastSyncAt]
         );
         break;
       }
@@ -262,7 +232,7 @@ export async function syncAllSelected(): Promise<SyncResult> {
   }
 
   const lastSyncAt = new Date().toISOString();
-  await db.run(`UPDATE user_config SET last_sync_at=? WHERE id=1`, lastSyncAt);
+  await db.run(`UPDATE user_config SET last_sync_at=$1 WHERE id=1`, [lastSyncAt]);
 
   return { calendarsSynced, eventsUpserted, eventsDeletedMarked, lastSyncAt };
 }

@@ -9,11 +9,11 @@ export async function POST(req: Request) {
     const ids = Array.isArray(body?.selectedCalendarIds) ? body.selectedCalendarIds : null;
     if (!ids) return bad(400, "selectedCalendarIds must be an array");
     const db = await getDb();
-    await db.run("UPDATE user_config SET selected_calendar_ids=? WHERE id=1", jsonStringify(ids));
+    await db.run("UPDATE user_config SET selected_calendar_ids=$1 WHERE id=1", [jsonStringify(ids)]);
     await db.run("UPDATE calendars SET selected=0");
     if (ids.length) {
-      const placeholders = ids.map(() => "?").join(",");
-      await db.run(`UPDATE calendars SET selected=1 WHERE calendar_id IN (${placeholders})`, ...ids);
+      const placeholders = ids.map((_: any, i: number) => `$${i + 1}`).join(",");
+      await db.run(`UPDATE calendars SET selected=1 WHERE calendar_id IN (${placeholders})`, ids);
     }
     return ok({ ok: true });
   } catch (e) {

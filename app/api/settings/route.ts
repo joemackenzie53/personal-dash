@@ -39,30 +39,30 @@ export async function PUT(req: Request) {
 
     const updates: string[] = [];
     const params: any[] = [];
+    let idx = 1;
 
     if (Number.isFinite(horizonDays)) {
-      updates.push("horizon_days=?");
+      updates.push(`horizon_days=$${idx++}`);
       params.push(horizonDays);
     }
     if (Number.isFinite(refreshIntervalMinutes)) {
-      updates.push("refresh_interval_minutes=?");
+      updates.push(`refresh_interval_minutes=$${idx++}`);
       params.push(refreshIntervalMinutes);
     }
     if (selectedCalendarIds) {
-      updates.push("selected_calendar_ids=?");
+      updates.push(`selected_calendar_ids=$${idx++}`);
       params.push(jsonStringify(selectedCalendarIds));
     }
 
     if (updates.length) {
-      await db.run(`UPDATE user_config SET ${updates.join(", ")} WHERE id=1`, ...params);
+      await db.run(`UPDATE user_config SET ${updates.join(", ")} WHERE id=1`, params);
     }
 
-    // Reflect selection on calendars table
     if (selectedCalendarIds) {
       await db.run("UPDATE calendars SET selected=0");
       if (selectedCalendarIds.length) {
-        const placeholders = selectedCalendarIds.map(() => "?").join(",");
-        await db.run(`UPDATE calendars SET selected=1 WHERE calendar_id IN (${placeholders})`, ...selectedCalendarIds);
+        const placeholders = selectedCalendarIds.map((_: any, i: number) => `$${i + 1}`).join(",");
+        await db.run(`UPDATE calendars SET selected=1 WHERE calendar_id IN (${placeholders})`, selectedCalendarIds);
       }
     }
 

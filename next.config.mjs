@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  allowedDevOrigins: ['*'],
+  allowedDevOrigins: ['*.riker.replit.dev', '*.replit.dev'],
   async headers() {
     return [
       {

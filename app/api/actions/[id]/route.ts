@@ -23,9 +23,10 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const keys = Object.keys(allowed);
     if (!keys.length) return bad(400, "No updatable fields provided");
 
-    const sets = keys.map((k) => `${k}=?`).join(", ");
+    const sets = keys.map((k, i) => `${k}=$${i + 1}`).join(", ");
     const vals = keys.map((k) => allowed[k]);
-    await db.run(`UPDATE actions SET ${sets}, updated_at=datetime('now') WHERE id=?`, ...vals, id);
+    vals.push(id);
+    await db.run(`UPDATE actions SET ${sets}, updated_at=NOW()::TEXT WHERE id=$${vals.length}`, vals);
 
     return ok({ ok: true });
   } catch (e) {
@@ -37,7 +38,7 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
   try {
     requireAuth();
     const db = await getDb();
-    await db.run("DELETE FROM actions WHERE id=?", params.id);
+    await db.run("DELETE FROM actions WHERE id=$1", [params.id]);
     return ok({ ok: true });
   } catch (e) {
     return handleError(e);

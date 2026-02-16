@@ -1,6 +1,3 @@
-PRAGMA journal_mode=WAL;
-PRAGMA foreign_keys=ON;
-
 CREATE TABLE IF NOT EXISTS user_config (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   horizon_days INTEGER NOT NULL DEFAULT 182,
@@ -14,7 +11,7 @@ CREATE TABLE IF NOT EXISTS oauth_tokens (
   refresh_token TEXT,
   access_token TEXT,
   access_token_expiry TEXT,
-  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  updated_at TEXT NOT NULL DEFAULT (NOW()::TEXT)
 );
 
 CREATE TABLE IF NOT EXISTS calendars (
@@ -23,7 +20,7 @@ CREATE TABLE IF NOT EXISTS calendars (
   primary_flag INTEGER NOT NULL DEFAULT 0,
   is_holiday INTEGER NOT NULL DEFAULT 0,
   selected INTEGER NOT NULL DEFAULT 0,
-  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  updated_at TEXT NOT NULL DEFAULT (NOW()::TEXT)
 );
 
 CREATE TABLE IF NOT EXISTS calendar_sync_state (
@@ -42,8 +39,8 @@ CREATE TABLE IF NOT EXISTS events (
   title TEXT,
   description TEXT,
   location TEXT,
-  start TEXT,
-  end TEXT,
+  "start" TEXT,
+  "end" TEXT,
   all_day INTEGER NOT NULL DEFAULT 0,
   updated TEXT,
   status TEXT,
@@ -51,7 +48,7 @@ CREATE TABLE IF NOT EXISTS events (
   raw_json TEXT
 );
 
-CREATE INDEX IF NOT EXISTS idx_events_start ON events(start);
+CREATE INDEX IF NOT EXISTS idx_events_start ON events("start");
 CREATE INDEX IF NOT EXISTS idx_events_calendar ON events(calendar_id);
 
 CREATE TABLE IF NOT EXISTS event_meta (
@@ -61,7 +58,7 @@ CREATE TABLE IF NOT EXISTS event_meta (
   project_id TEXT,
   notes_url TEXT,
   locked INTEGER NOT NULL DEFAULT 0,
-  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  updated_at TEXT NOT NULL DEFAULT (NOW()::TEXT)
 );
 
 CREATE INDEX IF NOT EXISTS idx_event_meta_category ON event_meta(category);
@@ -76,8 +73,8 @@ CREATE TABLE IF NOT EXISTS projects (
   tags TEXT NOT NULL DEFAULT '[]',
   drive_folder_url TEXT,
   key_doc_urls TEXT NOT NULL DEFAULT '[]',
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at TEXT NOT NULL DEFAULT (NOW()::TEXT),
+  updated_at TEXT NOT NULL DEFAULT (NOW()::TEXT)
 );
 
 CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status);
@@ -95,8 +92,8 @@ CREATE TABLE IF NOT EXISTS actions (
   parent_id TEXT,
   reference_url TEXT,
   checklist TEXT NOT NULL DEFAULT '[]',
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at TEXT NOT NULL DEFAULT (NOW()::TEXT),
+  updated_at TEXT NOT NULL DEFAULT (NOW()::TEXT)
 );
 
 CREATE INDEX IF NOT EXISTS idx_actions_status_due ON actions(status, due_at);
