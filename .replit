@@ -40,7 +40,7 @@ externalPort = 80
 [deployment]
 deploymentTarget = "vm"
 run = ["node", ".next/standalone/server.js"]
-build = ["bash", "-c", "NODE_OPTIONS='--max-old-space-size=2048' npm run build && cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/"]
+build = ["bash", "-c", "NODE_OPTIONS='--max-old-space-size=2048' npm run build && cp -r .next/static .next/standalone/.next/ && [ -d public ] && cp -r public .next/standalone/ || true"]
 
 [userenv]
 
