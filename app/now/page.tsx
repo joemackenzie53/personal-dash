@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/Input";
 import { Notice } from "@/components/Notice";
 import { Badge } from "@/components/ui/Badge";
 import { fmtDate, fmtTime, isAllDay } from "@/lib/format";
+import { EventDetailModal } from "@/components/EventDetailModal";
 
 type Settings = {
   connected: boolean;
@@ -25,8 +26,15 @@ type EventRow = {
   all_day: number;
   category: string | null;
   is_major: number | null;
+  project_id: string | null;
+  notes_url: string | null;
+  locked: number | null;
+  description: string | null;
+  location: string | null;
   deleted: number;
 };
+
+type ProjectRow = { id: string; name: string; status: string };
 
 type ActionRow = {
   id: string;
@@ -53,8 +61,10 @@ export default function NowPage() {
   const [settings, setSettings] = React.useState<Settings | null>(null);
   const [events, setEvents] = React.useState<EventRow[]>([]);
   const [actions, setActions] = React.useState<ActionRow[]>([]);
+  const [projects, setProjects] = React.useState<ProjectRow[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [err, setErr] = React.useState<string | null>(null);
+  const [selectedEvent, setSelectedEvent] = React.useState<EventRow | null>(null);
 
   const [newTitle, setNewTitle] = React.useState("");
   const [newDue, setNewDue] = React.useState<string>("");
@@ -66,7 +76,6 @@ export default function NowPage() {
       const s = await api<Settings>("/api/settings");
       setSettings(s);
 
-      // events next 14 days
       const from = startOfDay(new Date()).toISOString();
       const to = addDays(new Date(), 14).toISOString();
       const ev = await api<{ events: EventRow[] }>(`/api/events?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
@@ -74,6 +83,9 @@ export default function NowPage() {
 
       const ac = await api<{ actions: ActionRow[] }>("/api/actions?status=open");
       setActions(ac.actions);
+
+      const pr = await api<{ projects: ProjectRow[] }>("/api/projects?status=active");
+      setProjects(pr.projects);
     } catch (e: any) {
       setErr(e?.message || "Failed to load");
     } finally {
@@ -156,7 +168,7 @@ export default function NowPage() {
         </CardHeader>
         <CardContent>
           <div className="grid gap-2 sm:grid-cols-[1fr,200px,auto]">
-            <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="e.g. Order Gizem’s birthday present" />
+            <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="e.g. Order Gizem's birthday present" />
             <Input type="date" value={newDue} onChange={(e) => setNewDue(e.target.value)} />
             <Button onClick={addAction} disabled={!newTitle.trim()}>Add</Button>
           </div>
@@ -240,7 +252,11 @@ export default function NowPage() {
               {events.slice(0, 20).map((e) => {
                 const allDay = isAllDay(e.start, e.all_day);
                 return (
-                  <li key={e.event_key} className="rounded-lg border border-neutral-200 px-3 py-2">
+                  <li
+                    key={e.event_key}
+                    className="cursor-pointer rounded-lg border border-neutral-200 px-3 py-2 hover:bg-neutral-50"
+                    onClick={() => setSelectedEvent(e)}
+                  >
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="text-sm font-medium">{e.title || "(no title)"}</div>
@@ -267,6 +283,13 @@ export default function NowPage() {
           </CardContent>
         </Card>
       </div>
+
+      <EventDetailModal
+        event={selectedEvent}
+        projects={projects}
+        onClose={() => setSelectedEvent(null)}
+        onSaved={load}
+      />
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { Notice } from "@/components/Notice";
 import { Badge } from "@/components/ui/Badge";
 import { fmtDate, fmtTime, isAllDay } from "@/lib/format";
 import { Select } from "@/components/ui/Select";
+import { EventDetailModal } from "@/components/EventDetailModal";
 
 type Settings = {
   connected: boolean;
@@ -22,7 +23,15 @@ type EventRow = {
   all_day: number;
   category: string | null;
   is_major: number | null;
+  project_id: string | null;
+  notes_url: string | null;
+  locked: number | null;
+  description: string | null;
+  location: string | null;
+  deleted: number;
 };
+
+type ProjectRow = { id: string; name: string; status: string };
 
 function addDays(d: Date, days: number) {
   const x = new Date(d);
@@ -44,9 +53,11 @@ function monthLabel(key: string) {
 export default function HorizonPage() {
   const [settings, setSettings] = React.useState<Settings | null>(null);
   const [events, setEvents] = React.useState<EventRow[]>([]);
+  const [projects, setProjects] = React.useState<ProjectRow[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [err, setErr] = React.useState<string | null>(null);
   const [filter, setFilter] = React.useState<string>("all");
+  const [selectedEvent, setSelectedEvent] = React.useState<EventRow | null>(null);
 
   async function load() {
     setLoading(true);
@@ -59,6 +70,9 @@ export default function HorizonPage() {
       const to = addDays(new Date(), s.horizonDays || 182).toISOString();
       const ev = await api<{ events: EventRow[] }>(`/api/events?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
       setEvents(ev.events);
+
+      const pr = await api<{ projects: ProjectRow[] }>("/api/projects?status=active");
+      setProjects(pr.projects);
     } catch (e: any) {
       setErr(e?.message || "Failed to load");
     } finally {
@@ -145,7 +159,11 @@ export default function HorizonPage() {
                   const allDay = isAllDay(e.start, e.all_day);
                   const cat = e.category || "unknown";
                   return (
-                    <li key={e.event_key} className="rounded-lg border border-neutral-200 px-3 py-2">
+                    <li
+                      key={e.event_key}
+                      className="cursor-pointer rounded-lg border border-neutral-200 px-3 py-2 hover:bg-neutral-50"
+                      onClick={() => setSelectedEvent(e)}
+                    >
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <div className="text-sm font-medium">{e.title || "(no title)"}</div>
@@ -166,6 +184,13 @@ export default function HorizonPage() {
           </Card>
         ))}
       </div>
+
+      <EventDetailModal
+        event={selectedEvent}
+        projects={projects}
+        onClose={() => setSelectedEvent(null)}
+        onSaved={load}
+      />
     </div>
   );
 }
