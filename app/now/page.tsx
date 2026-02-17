@@ -10,6 +10,7 @@ import { Notice } from "@/components/Notice";
 import { Badge } from "@/components/ui/Badge";
 import { fmtDate, fmtTime, isAllDay } from "@/lib/format";
 import { EventDetailModal } from "@/components/EventDetailModal";
+import { ActionDetailModal } from "@/components/ActionDetailModal";
 
 type Settings = {
   connected: boolean;
@@ -67,6 +68,7 @@ export default function NowPage() {
   const [loading, setLoading] = React.useState(true);
   const [err, setErr] = React.useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = React.useState<EventRow | null>(null);
+  const [selectedAction, setSelectedAction] = React.useState<ActionRow | null>(null);
 
   const [newTitle, setNewTitle] = React.useState("");
   const [newDue, setNewDue] = React.useState<string>("");
@@ -238,7 +240,7 @@ export default function NowPage() {
                 <div className="text-xs font-semibold uppercase tracking-wide text-neutral-600">Overdue</div>
                 <ul className="space-y-2">
                   {overdue.slice(0, 8).map((a) => (
-                    <li key={a.id} className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2">
+                    <li key={a.id} className="cursor-pointer rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 hover:bg-neutral-100" onClick={() => setSelectedAction(a)}>
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <div className="text-sm font-medium">{a.title}</div>
@@ -269,7 +271,7 @@ export default function NowPage() {
                 <div className="text-xs font-semibold uppercase tracking-wide text-neutral-600">Due soon</div>
                 <ul className="space-y-2">
                   {dueSoon.slice(0, 8).map((a) => (
-                    <li key={a.id} className="rounded-lg border border-neutral-200 px-3 py-2">
+                    <li key={a.id} className="cursor-pointer rounded-lg border border-neutral-200 px-3 py-2 hover:bg-neutral-50" onClick={() => setSelectedAction(a)}>
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <div className="text-sm font-medium">{a.title}</div>
@@ -300,7 +302,7 @@ export default function NowPage() {
                 <div className="text-xs font-semibold uppercase tracking-wide text-neutral-600">Unscheduled</div>
                 <ul className="space-y-2">
                   {unscheduled.slice(0, 8).map((a) => (
-                    <li key={a.id} className="rounded-lg border border-neutral-200 px-3 py-2">
+                    <li key={a.id} className="cursor-pointer rounded-lg border border-neutral-200 px-3 py-2 hover:bg-neutral-50" onClick={() => setSelectedAction(a)}>
                       <div>
                         <div className="text-sm font-medium">{a.title}</div>
                         {parentLabel(a) && (
@@ -385,6 +387,14 @@ export default function NowPage() {
         event={selectedEvent}
         projects={projects}
         onClose={() => setSelectedEvent(null)}
+        onSaved={load}
+      />
+
+      <ActionDetailModal
+        action={selectedAction}
+        projects={projects}
+        events={events.slice(0, 15).map((e) => ({ event_key: e.event_key, title: e.title || "(no title)" }))}
+        onClose={() => setSelectedAction(null)}
         onSaved={load}
       />
     </div>
