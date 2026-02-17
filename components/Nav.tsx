@@ -2,10 +2,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
-import { CalendarDays, ListTodo, Layers, FolderKanban, Settings, AlertTriangle } from "lucide-react";
+import { CalendarDays, ListTodo, Layers, FolderKanban, Settings, AlertTriangle, CheckSquare } from "lucide-react";
 
 const items = [
   { href: "/now", label: "Now", icon: ListTodo },
+  { href: "/actions", label: "Actions", icon: CheckSquare },
   { href: "/horizon", label: "Horizon", icon: CalendarDays },
   { href: "/triage", label: "Triage", icon: AlertTriangle },
   { href: "/projects", label: "Projects", icon: FolderKanban },
@@ -47,7 +48,7 @@ export function BottomNav() {
   const pathname = usePathname();
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-neutral-200 bg-white sm:hidden">
-      <div className="mx-auto grid max-w-5xl grid-cols-5">
+      <div className="mx-auto grid max-w-5xl grid-cols-6">
         {items.map((it) => {
           const active = pathname === it.href || pathname.startsWith(it.href + "/");
           const Icon = it.icon;
