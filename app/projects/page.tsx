@@ -3,6 +3,7 @@ import * as React from "react";
 import { api } from "@/lib/client";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { fmtDate } from "@/lib/format";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
@@ -139,7 +140,8 @@ function ProjectActions({ projectId }: { projectId: string }) {
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
                   </button>
-                  <span className="text-sm">{a.title}</span>
+                  <span className="flex-1 text-sm">{a.title}</span>
+                  {a.due_at && <span className="shrink-0 text-xs text-neutral-500">{fmtDate(a.due_at)}</span>}
                 </li>
               ))}
               {doneActions.map((a) => (
@@ -152,7 +154,7 @@ function ProjectActions({ projectId }: { projectId: string }) {
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
                   </button>
-                  <span className="text-sm text-neutral-400 line-through">{a.title}</span>
+                  <span className="flex-1 text-sm text-neutral-400 line-through">{a.title}</span>
                 </li>
               ))}
             </ul>
