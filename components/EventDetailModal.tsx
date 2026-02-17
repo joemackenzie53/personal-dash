@@ -57,6 +57,7 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
   const [newTemplateTitle, setNewTemplateTitle] = React.useState("");
   const [newInstanceTitle, setNewInstanceTitle] = React.useState("");
   const [addingAction, setAddingAction] = React.useState(false);
+  const [actionsTab, setActionsTab] = React.useState<"instance" | "recurring">("instance");
 
   React.useEffect(() => {
     api<{ categories: CategoryRow[] }>("/api/categories")
@@ -91,6 +92,7 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
       setErr(null);
       setNewTemplateTitle("");
       setNewInstanceTitle("");
+      setActionsTab("instance");
       loadActions(event.event_key);
     } else {
       setActions([]);
@@ -161,18 +163,6 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
     }
   }
 
-  async function toggleTemplate(action: ActionRow) {
-    try {
-      await api(`/api/actions/${action.id}`, {
-        method: "PUT",
-        body: JSON.stringify({ isTemplate: action.is_template ? false : true }),
-      });
-      if (event) await loadActions(event.event_key);
-    } catch (e: any) {
-      setErr(e?.message || "Failed to update action");
-    }
-  }
-
   async function deleteAction(actionId: string) {
     try {
       await api(`/api/actions/${actionId}`, { method: "DELETE" });
@@ -202,8 +192,8 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
 
   function renderTemplateRow(a: ActionRow) {
     return (
-      <li key={a.id} className="group flex items-center gap-2 rounded px-1 py-1 hover:bg-amber-50/50">
-        <span className="flex h-5 w-5 shrink-0 items-center justify-center text-amber-500">
+      <li key={a.id} className="group flex items-center gap-2 rounded px-1 py-1 hover:bg-neutral-50">
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center text-neutral-400">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="17 1 21 5 17 9" />
             <path d="M3 11V9a4 4 0 0 1 4-4h14" />
@@ -213,18 +203,9 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
         </span>
         <span className="flex-1 text-sm">{a.title}</span>
         <button
-          onClick={() => toggleTemplate(a)}
-          className="shrink-0 rounded p-0.5 text-neutral-300 opacity-0 group-hover:opacity-100 hover:text-neutral-600"
-          title="Move to this-instance only (remove from template)"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M18 15l-6-6-6 6" />
-          </svg>
-        </button>
-        <button
           onClick={() => deleteAction(a.id)}
           className="shrink-0 rounded p-0.5 text-neutral-300 opacity-0 group-hover:opacity-100 hover:text-red-500"
-          title="Delete template"
+          title="Delete"
         >
           {xIcon}
         </button>
@@ -252,20 +233,9 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
         </span>
         {a.due_at && !isDone && <span className="shrink-0 text-xs text-neutral-500">{fmtDate(a.due_at)}</span>}
         {isGenerated && !isDone && (
-          <span className="shrink-0 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-600">
-            from template
+          <span className="shrink-0 text-xs text-neutral-400" title="Auto-created from a recurring action">
+            recurring
           </span>
-        )}
-        {!isDone && !a.is_template && !isGenerated && (
-          <button
-            onClick={() => toggleTemplate(a)}
-            className="shrink-0 rounded p-0.5 text-neutral-300 opacity-0 group-hover:opacity-100 hover:text-amber-500"
-            title="Promote to template (repeat on all instances)"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M6 9l6 6 6-6" />
-            </svg>
-          </button>
         )}
         {!isDone && (
           <button
@@ -387,25 +357,68 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
           </div>
         </div>
 
-        <div className="border-t border-neutral-200 p-4 space-y-4">
-          <div className="rounded-lg border border-amber-200 bg-amber-50/40">
-            <div className="flex items-center gap-2 px-3 pt-3 pb-1">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-500">
-                <polyline points="17 1 21 5 17 9" />
-                <path d="M3 11V9a4 4 0 0 1 4-4h14" />
-                <polyline points="7 23 3 19 7 15" />
-                <path d="M21 13v2a4 4 0 0 1-4 4H3" />
-              </svg>
-              <div className="text-xs font-semibold uppercase tracking-wide text-amber-700">Templates</div>
-            </div>
-            <div className="px-3 pb-1 text-[11px] text-amber-600">
-              These actions are automatically added to every instance of this event.
-            </div>
+        <div className="border-t border-neutral-200 p-4">
+          <div className="flex items-center gap-1 border-b border-neutral-200 mb-3">
+            <button
+              onClick={() => setActionsTab("instance")}
+              className={`px-3 py-1.5 text-xs font-medium border-b-2 -mb-px transition-colors ${
+                actionsTab === "instance"
+                  ? "border-neutral-900 text-neutral-900"
+                  : "border-transparent text-neutral-400 hover:text-neutral-600"
+              }`}
+            >
+              This instance
+              {instanceOpen.length > 0 && (
+                <span className="ml-1.5 text-neutral-400">{instanceOpen.length}</span>
+              )}
+            </button>
+            <button
+              onClick={() => setActionsTab("recurring")}
+              className={`px-3 py-1.5 text-xs font-medium border-b-2 -mb-px transition-colors ${
+                actionsTab === "recurring"
+                  ? "border-neutral-900 text-neutral-900"
+                  : "border-transparent text-neutral-400 hover:text-neutral-600"
+              }`}
+            >
+              Recurring
+              {templateActions.length > 0 && (
+                <span className="ml-1.5 text-neutral-400">{templateActions.length}</span>
+              )}
+            </button>
+          </div>
 
-            <div className="px-3 pb-2">
+          {actionsTab === "instance" && (
+            <div>
               <div className="flex gap-2">
                 <Input
-                  placeholder="Add a template action\u2026"
+                  placeholder="Add an action\u2026"
+                  value={newInstanceTitle}
+                  onChange={(e) => setNewInstanceTitle(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") addAction(newInstanceTitle, false); }}
+                  className="text-sm"
+                />
+                <Button onClick={() => addAction(newInstanceTitle, false)} disabled={!newInstanceTitle.trim() || addingAction}>
+                  Add
+                </Button>
+              </div>
+
+              {instanceActions.length > 0 && (
+                <ul className="mt-2 space-y-0.5">
+                  {instanceOpen.map((a) => renderInstanceRow(a))}
+                  {instanceDone.map((a) => renderInstanceRow(a))}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {actionsTab === "recurring" && (
+            <div>
+              <div className="mb-2 text-xs text-neutral-500">
+                Actions here are automatically added to every instance of this event.
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Add a recurring action\u2026"
                   value={newTemplateTitle}
                   onChange={(e) => setNewTemplateTitle(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") addAction(newTemplateTitle, true); }}
@@ -415,46 +428,19 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
                   Add
                 </Button>
               </div>
+
+              {templateActions.length > 0 && (
+                <ul className="mt-2 space-y-0.5">
+                  {templateActions.map((a) => renderTemplateRow(a))}
+                </ul>
+              )}
+              {templateActions.length === 0 && (
+                <div className="mt-2 text-xs text-neutral-400 italic">
+                  No recurring actions yet.
+                </div>
+              )}
             </div>
-
-            {templateActions.length > 0 && (
-              <ul className="border-t border-amber-200/60 px-2 py-1.5 space-y-0.5">
-                {templateActions.map((a) => renderTemplateRow(a))}
-              </ul>
-            )}
-            {templateActions.length === 0 && (
-              <div className="border-t border-amber-200/60 px-3 py-2 text-xs text-amber-500 italic">
-                No templates yet. Add one above to repeat it on future instances.
-              </div>
-            )}
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between">
-              <div className="text-xs font-semibold uppercase tracking-wide text-neutral-600">This instance</div>
-              <div className="text-xs text-neutral-500">{instanceOpen.length} open</div>
-            </div>
-
-            <div className="mt-2 flex gap-2">
-              <Input
-                placeholder="Add an action for this instance\u2026"
-                value={newInstanceTitle}
-                onChange={(e) => setNewInstanceTitle(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") addAction(newInstanceTitle, false); }}
-                className="text-sm"
-              />
-              <Button onClick={() => addAction(newInstanceTitle, false)} disabled={!newInstanceTitle.trim() || addingAction}>
-                Add
-              </Button>
-            </div>
-
-            {instanceActions.length > 0 && (
-              <ul className="mt-2 space-y-0.5">
-                {instanceOpen.map((a) => renderInstanceRow(a))}
-                {instanceDone.map((a) => renderInstanceRow(a))}
-              </ul>
-            )}
-          </div>
+          )}
         </div>
       </div>
     </div>
