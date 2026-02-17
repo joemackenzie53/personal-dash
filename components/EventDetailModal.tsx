@@ -54,8 +54,8 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
 
   const [categories, setCategories] = React.useState<CategoryRow[]>([]);
   const [actions, setActions] = React.useState<ActionRow[]>([]);
-  const [newActionTitle, setNewActionTitle] = React.useState("");
-  const [newActionIsTemplate, setNewActionIsTemplate] = React.useState(false);
+  const [newTemplateTitle, setNewTemplateTitle] = React.useState("");
+  const [newInstanceTitle, setNewInstanceTitle] = React.useState("");
   const [addingAction, setAddingAction] = React.useState(false);
 
   React.useEffect(() => {
@@ -89,8 +89,8 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
       setNotesUrl(event.notes_url || "");
       setIsMajor(!!event.is_major);
       setErr(null);
-      setNewActionTitle("");
-      setNewActionIsTemplate(false);
+      setNewTemplateTitle("");
+      setNewInstanceTitle("");
       loadActions(event.event_key);
     } else {
       setActions([]);
@@ -125,21 +125,21 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
     }
   }
 
-  async function addAction() {
-    if (!event || !newActionTitle.trim()) return;
+  async function addAction(title: string, isTemplate: boolean) {
+    if (!event || !title.trim()) return;
     setAddingAction(true);
     try {
       await api("/api/actions", {
         method: "POST",
         body: JSON.stringify({
-          title: newActionTitle.trim(),
+          title: title.trim(),
           parentType: "event",
           parentId: event.event_key,
-          isTemplate: newActionIsTemplate,
+          isTemplate,
         }),
       });
-      setNewActionTitle("");
-      setNewActionIsTemplate(false);
+      if (isTemplate) setNewTemplateTitle("");
+      else setNewInstanceTitle("");
       await loadActions(event.event_key);
     } catch (e: any) {
       setErr(e?.message || "Failed to add action");
@@ -182,19 +182,58 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
     }
   }
 
-  const openActions = actions.filter((a) => a.status === "open");
-  const doneActions = actions.filter((a) => a.status === "done");
+  const templateActions = actions.filter((a) => a.is_template);
+  const instanceActions = actions.filter((a) => !a.is_template);
+  const instanceOpen = instanceActions.filter((a) => a.status === "open");
+  const instanceDone = instanceActions.filter((a) => a.status === "done");
 
-  const templateIcon = (
+  const xIcon = (
     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="17 1 21 5 17 9" />
-      <path d="M3 11V9a4 4 0 0 1 4-4h14" />
-      <polyline points="7 23 3 19 7 15" />
-      <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
     </svg>
   );
 
-  function renderActionRow(a: ActionRow, isDone: boolean) {
+  const checkIcon = (
+    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+
+  function renderTemplateRow(a: ActionRow) {
+    return (
+      <li key={a.id} className="group flex items-center gap-2 rounded px-1 py-1 hover:bg-amber-50/50">
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center text-amber-500">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="17 1 21 5 17 9" />
+            <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+            <polyline points="7 23 3 19 7 15" />
+            <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+          </svg>
+        </span>
+        <span className="flex-1 text-sm">{a.title}</span>
+        <button
+          onClick={() => toggleTemplate(a)}
+          className="shrink-0 rounded p-0.5 text-neutral-300 opacity-0 group-hover:opacity-100 hover:text-neutral-600"
+          title="Move to this-instance only (remove from template)"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 15l-6-6-6 6" />
+          </svg>
+        </button>
+        <button
+          onClick={() => deleteAction(a.id)}
+          className="shrink-0 rounded p-0.5 text-neutral-300 opacity-0 group-hover:opacity-100 hover:text-red-500"
+          title="Delete template"
+        >
+          {xIcon}
+        </button>
+      </li>
+    );
+  }
+
+  function renderInstanceRow(a: ActionRow) {
+    const isDone = a.status === "done";
     const isGenerated = !!a.generated_from_action_id;
     return (
       <li key={a.id} className="group flex items-center gap-2 rounded px-1 py-1 hover:bg-neutral-50">
@@ -206,57 +245,35 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
               : "border-neutral-300 text-transparent hover:border-neutral-500"
           }`}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
+          {checkIcon}
         </button>
         <span className={`flex-1 text-sm ${isDone ? "text-neutral-400 line-through" : ""}`}>
           {a.title}
         </span>
         {a.due_at && !isDone && <span className="shrink-0 text-xs text-neutral-500">{fmtDate(a.due_at)}</span>}
-        {a.is_template ? (
-          <button
-            onClick={() => toggleTemplate(a)}
-            className="shrink-0 rounded p-0.5 text-amber-500 hover:bg-amber-50"
-            title="Template action — will be copied to future instances. Click to make instance-only."
-          >
-            {templateIcon}
-          </button>
-        ) : isGenerated ? (
-          <span className="shrink-0 text-xs text-neutral-400" title="Auto-created from a template on another instance">
-            auto
+        {isGenerated && !isDone && (
+          <span className="shrink-0 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-600">
+            from template
           </span>
-        ) : !isDone ? (
+        )}
+        {!isDone && !a.is_template && !isGenerated && (
           <button
             onClick={() => toggleTemplate(a)}
             className="shrink-0 rounded p-0.5 text-neutral-300 opacity-0 group-hover:opacity-100 hover:text-amber-500"
-            title="Make this a template — it will be copied to future instances"
-          >
-            {templateIcon}
-          </button>
-        ) : null}
-        {!isGenerated && !isDone && (
-          <button
-            onClick={() => deleteAction(a.id)}
-            className="shrink-0 rounded p-0.5 text-neutral-300 opacity-0 group-hover:opacity-100 hover:text-red-500"
-            title="Delete"
+            title="Promote to template (repeat on all instances)"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
+              <path d="M6 9l6 6 6-6" />
             </svg>
           </button>
         )}
-        {isGenerated && !isDone && (
+        {!isDone && (
           <button
             onClick={() => deleteAction(a.id)}
             className="shrink-0 rounded p-0.5 text-neutral-300 opacity-0 group-hover:opacity-100 hover:text-red-500"
-            title="Remove from this instance"
+            title={isGenerated ? "Remove from this instance" : "Delete"}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
+            {xIcon}
           </button>
         )}
       </li>
@@ -370,48 +387,74 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
           </div>
         </div>
 
-        <div className="border-t border-neutral-200 p-4">
-          <div className="flex items-center justify-between">
-            <div className="text-xs font-semibold uppercase tracking-wide text-neutral-600">Actions</div>
-            <div className="text-xs text-neutral-500">{openActions.length} open</div>
+        <div className="border-t border-neutral-200 p-4 space-y-4">
+          <div className="rounded-lg border border-amber-200 bg-amber-50/40">
+            <div className="flex items-center gap-2 px-3 pt-3 pb-1">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-500">
+                <polyline points="17 1 21 5 17 9" />
+                <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+                <polyline points="7 23 3 19 7 15" />
+                <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+              </svg>
+              <div className="text-xs font-semibold uppercase tracking-wide text-amber-700">Templates</div>
+            </div>
+            <div className="px-3 pb-1 text-[11px] text-amber-600">
+              These actions are automatically added to every instance of this event.
+            </div>
+
+            <div className="px-3 pb-2">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Add a template action\u2026"
+                  value={newTemplateTitle}
+                  onChange={(e) => setNewTemplateTitle(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") addAction(newTemplateTitle, true); }}
+                  className="text-sm"
+                />
+                <Button onClick={() => addAction(newTemplateTitle, true)} disabled={!newTemplateTitle.trim() || addingAction}>
+                  Add
+                </Button>
+              </div>
+            </div>
+
+            {templateActions.length > 0 && (
+              <ul className="border-t border-amber-200/60 px-2 py-1.5 space-y-0.5">
+                {templateActions.map((a) => renderTemplateRow(a))}
+              </ul>
+            )}
+            {templateActions.length === 0 && (
+              <div className="border-t border-amber-200/60 px-3 py-2 text-xs text-amber-500 italic">
+                No templates yet. Add one above to repeat it on future instances.
+              </div>
+            )}
           </div>
 
-          {actions.some((a) => a.is_template) && (
-            <div className="mt-1.5 rounded-md bg-amber-50 px-2.5 py-1.5 text-xs text-amber-700">
-              Actions marked with the repeat icon are templates &mdash; they&apos;ll be automatically created on future instances of this event.
+          <div>
+            <div className="flex items-center justify-between">
+              <div className="text-xs font-semibold uppercase tracking-wide text-neutral-600">This instance</div>
+              <div className="text-xs text-neutral-500">{instanceOpen.length} open</div>
             </div>
-          )}
 
-          <div className="mt-2 space-y-1.5">
-            <div className="flex gap-2">
+            <div className="mt-2 flex gap-2">
               <Input
-                placeholder="Add an action for this event\u2026"
-                value={newActionTitle}
-                onChange={(e) => setNewActionTitle(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") addAction(); }}
+                placeholder="Add an action for this instance\u2026"
+                value={newInstanceTitle}
+                onChange={(e) => setNewInstanceTitle(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") addAction(newInstanceTitle, false); }}
                 className="text-sm"
               />
-              <Button onClick={addAction} disabled={!newActionTitle.trim() || addingAction}>
-                {addingAction ? "Adding\u2026" : "Add"}
+              <Button onClick={() => addAction(newInstanceTitle, false)} disabled={!newInstanceTitle.trim() || addingAction}>
+                Add
               </Button>
             </div>
-            <label className="flex items-center gap-1.5 text-xs text-neutral-500 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={newActionIsTemplate}
-                onChange={(e) => setNewActionIsTemplate(e.target.checked)}
-                className="rounded"
-              />
-              Repeat on future instances
-            </label>
-          </div>
 
-          {actions.length > 0 && (
-            <ul className="mt-3 space-y-0.5">
-              {openActions.map((a) => renderActionRow(a, false))}
-              {doneActions.map((a) => renderActionRow(a, true))}
-            </ul>
-          )}
+            {instanceActions.length > 0 && (
+              <ul className="mt-2 space-y-0.5">
+                {instanceOpen.map((a) => renderInstanceRow(a))}
+                {instanceDone.map((a) => renderInstanceRow(a))}
+              </ul>
+            )}
+          </div>
         </div>
       </div>
     </div>
