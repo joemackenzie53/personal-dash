@@ -25,7 +25,7 @@ export async function GET(req: Request) {
     }));
 
     const counts = await db.all<{ project_id: string; open_actions: number }>(
-      `SELECT parent_id as project_id, COUNT(*) as open_actions FROM actions WHERE status='open' AND parent_type='project' GROUP BY parent_id`
+      `SELECT parent_id as project_id, COUNT(*) as open_actions FROM actions WHERE status='open' AND parent_type='project' AND (is_template = 0 OR is_template IS NULL) GROUP BY parent_id`
     ).catch(() => [] as any);
 
     const byId = new Map<string, number>(counts.map((c: any) => [c.project_id, c.open_actions]));

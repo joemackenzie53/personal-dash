@@ -13,7 +13,7 @@ export async function GET(req: Request) {
     const parentId = url.searchParams.get("parentId");
 
     const db = await getDb();
-    const where: string[] = [];
+    const where: string[] = ["(is_template = 0 OR is_template IS NULL)"];
     const params: any[] = [];
     let idx = 1;
 
