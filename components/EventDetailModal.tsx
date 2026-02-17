@@ -443,26 +443,33 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
               <div className="mb-2 text-xs text-neutral-500">
                 Actions here are automatically added to every instance of this event.
               </div>
-              <div className="flex gap-2">
+              <div className="space-y-2">
                 <Input
                   placeholder="Add a recurring action\u2026"
                   value={newTemplateTitle}
                   onChange={(e) => setNewTemplateTitle(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") addAction(newTemplateTitle, true); }}
-                  className="flex-1 text-sm"
+                  className="w-full text-sm"
                 />
-                <Input
-                  type="number"
-                  min="0"
-                  placeholder="days before"
-                  value={newTemplateDaysBefore}
-                  onChange={(e) => setNewTemplateDaysBefore(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") addAction(newTemplateTitle, true); }}
-                  className="w-28 text-sm"
-                />
-                <Button onClick={() => addAction(newTemplateTitle, true)} disabled={!newTemplateTitle.trim() || addingAction}>
-                  Add
-                </Button>
+                <div className="flex items-center gap-2">
+                  <label className="flex items-center gap-1.5 text-xs text-neutral-500">
+                    Due
+                    <Input
+                      type="number"
+                      min="0"
+                      placeholder="0"
+                      value={newTemplateDaysBefore}
+                      onChange={(e) => setNewTemplateDaysBefore(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") addAction(newTemplateTitle, true); }}
+                      className="w-16 text-sm"
+                    />
+                    days before
+                  </label>
+                  <div className="flex-1" />
+                  <Button onClick={() => addAction(newTemplateTitle, true)} disabled={!newTemplateTitle.trim() || addingAction}>
+                    Add
+                  </Button>
+                </div>
               </div>
 
               {seriesTemplates.length > 0 && (
