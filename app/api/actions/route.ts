@@ -13,24 +13,33 @@ export async function GET(req: Request) {
     const parentId = url.searchParams.get("parentId");
 
     const db = await getDb();
-    const where: string[] = ["(is_template = 0 OR is_template IS NULL)"];
+    const where: string[] = ["(a.is_template = 0 OR a.is_template IS NULL)"];
     const params: any[] = [];
     let idx = 1;
 
     if (status !== "all") {
-      where.push(`status = $${idx++}`);
+      where.push(`a.status = $${idx++}`);
       params.push(status);
     }
     if (parentType && parentId) {
-      where.push(`parent_type = $${idx++} AND parent_id = $${idx++}`);
+      where.push(`a.parent_type = $${idx++} AND a.parent_id = $${idx++}`);
       params.push(parentType, parentId);
     }
 
     const rows = await db.all(
-      `SELECT * FROM actions ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY 
-         CASE WHEN due_at IS NULL THEN 1 ELSE 0 END,
-         due_at ASC,
-         created_at DESC
+      `SELECT a.*,
+         CASE
+           WHEN a.parent_type = 'event' THEN e.title
+           WHEN a.parent_type = 'project' THEN p.name
+         END AS parent_name
+       FROM actions a
+       LEFT JOIN events e ON a.parent_type = 'event' AND a.parent_id = e.event_key
+       LEFT JOIN projects p ON a.parent_type = 'project' AND a.parent_id = p.id
+       WHERE ${where.join(" AND ")}
+       ORDER BY 
+         CASE WHEN a.due_at IS NULL THEN 1 ELSE 0 END,
+         a.due_at ASC,
+         a.created_at DESC
        LIMIT 2000`,
       params
     );

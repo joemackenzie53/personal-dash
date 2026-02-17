@@ -13,6 +13,7 @@ type ActionRow = {
   due_at: string | null;
   parent_type: string | null;
   parent_id: string | null;
+  parent_name: string | null;
 };
 
 type ProjectRow = { id: string; name: string; status: string };
@@ -185,8 +186,11 @@ export function ActionDetailModal({ action, projects, events, onClose, onSaved }
                   ))}
                 </optgroup>
               )}
-              {events.length > 0 && (
+              {(events.length > 0 || (action?.parent_type === "event" && action?.parent_id)) && (
                 <optgroup label="Upcoming events">
+                  {action?.parent_type === "event" && action?.parent_id && !events.some(e => e.event_key === action.parent_id) && (
+                    <option value={`event:${action.parent_id}`}>{action.parent_name || "(linked event)"}</option>
+                  )}
                   {events.slice(0, 15).map((e) => (
                     <option key={e.event_key} value={`event:${e.event_key}`}>{e.title || "(no title)"}</option>
                   ))}

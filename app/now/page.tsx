@@ -47,6 +47,7 @@ type ActionRow = {
   due_at: string | null;
   parent_type: string | null;
   parent_id: string | null;
+  parent_name: string | null;
 };
 
 function startOfDay(d = new Date()) {
@@ -154,6 +155,7 @@ export default function NowPage() {
 
   function parentLabel(a: ActionRow) {
     if (!a.parent_type || !a.parent_id) return null;
+    if (a.parent_name) return a.parent_name;
     if (a.parent_type === "project") return projectMap[a.parent_id] || "Project";
     if (a.parent_type === "event") return eventMap[a.parent_id] || "Event";
     return null;
