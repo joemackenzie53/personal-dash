@@ -4,6 +4,8 @@
 A personal dashboard built with Next.js 15, React 19, and PostgreSQL. It integrates with Google Calendar to show upcoming events, manage projects, and track action items.
 
 ## Recent Changes
+- 2026-02-17: Added recurring event support — events table has recurring_event_id column, sync captures it from Google Calendar, triage propagates classification to all instances in a series. Recurring events show a repeat icon in all views and an info banner in the modal.
+- 2026-02-17: Created test data seed script (scripts/seed-test-events.ts) with --clean flag. Test events use `test-seed-` prefix for safe cleanup.
 - 2026-02-16: Migrated database from SQLite to PostgreSQL (Replit built-in). Removed sqlite3/sqlite packages, added pg. Updated all API routes and lib files for PostgreSQL syntax.
 - 2026-02-16: Initial Replit setup — configured Next.js for Replit proxy (allowedDevOrigins, cache headers), set up dev workflow on port 5000.
 

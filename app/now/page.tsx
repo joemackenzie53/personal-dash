@@ -24,6 +24,7 @@ type EventRow = {
   start: string;
   end: string;
   all_day: number;
+  recurring_event_id: string | null;
   category: string | null;
   is_major: number | null;
   project_id: string | null;
@@ -259,7 +260,17 @@ export default function NowPage() {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="text-sm font-medium">{e.title || "(no title)"}</div>
+                        <div className="flex items-center gap-1.5 text-sm font-medium">
+                          {e.recurring_event_id && (
+                            <svg className="shrink-0 text-neutral-400" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="17 1 21 5 17 9" />
+                              <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+                              <polyline points="7 23 3 19 7 15" />
+                              <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+                            </svg>
+                          )}
+                          {e.title || "(no title)"}
+                        </div>
                         <div className="text-xs text-neutral-600">
                           {fmtDate(e.start)}{" "}
                           {!allDay ? <>• {fmtTime(e.start)}</> : <span className="text-neutral-500">(all day)</span>}

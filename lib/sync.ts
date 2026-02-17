@@ -165,11 +165,14 @@ export async function syncAllSelected(): Promise<SyncResult> {
         const start = ev.start?.dateTime || ev.start?.date || null;
         const end = ev.end?.dateTime || ev.end?.date || null;
 
+        const recurringEventId = (ev as any).recurringEventId || null;
+
         await db.run(
-          `INSERT INTO events (event_key, calendar_id, google_event_id, ical_uid, title, description, location, "start", "end", all_day, updated, status, deleted, raw_json)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+          `INSERT INTO events (event_key, calendar_id, google_event_id, ical_uid, recurring_event_id, title, description, location, "start", "end", all_day, updated, status, deleted, raw_json)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
            ON CONFLICT(event_key) DO UPDATE SET
              ical_uid=excluded.ical_uid,
+             recurring_event_id=excluded.recurring_event_id,
              title=excluded.title,
              description=excluded.description,
              location=excluded.location,
@@ -180,7 +183,7 @@ export async function syncAllSelected(): Promise<SyncResult> {
              status=excluded.status,
              deleted=excluded.deleted,
              raw_json=excluded.raw_json`,
-          [eventKey, calendarId, ev.id, ev.iCalUID || null, ev.summary || "", ev.description || "", ev.location || "", start, end, allDay, ev.updated || null, status, deleted, JSON.stringify(ev)]
+          [eventKey, calendarId, ev.id, ev.iCalUID || null, recurringEventId, ev.summary || "", ev.description || "", ev.location || "", start, end, allDay, ev.updated || null, status, deleted, JSON.stringify(ev)]
         );
         eventsUpserted++;
         if (deleted) eventsDeletedMarked++;

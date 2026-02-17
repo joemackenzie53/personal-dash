@@ -36,6 +36,43 @@ export async function PUT(req: Request) {
       );
     }
 
+    const evt = await db.get<{ recurring_event_id: string | null }>(
+      "SELECT recurring_event_id FROM events WHERE event_key=$1",
+      [eventKey]
+    );
+    if (evt?.recurring_event_id) {
+      const siblings = await db.all<{ event_key: string }>(
+        "SELECT event_key FROM events WHERE recurring_event_id=$1 AND event_key != $2",
+        [evt.recurring_event_id, eventKey]
+      );
+      for (const sib of siblings) {
+        const sibMeta = await db.get<{ locked: number }>(
+          "SELECT locked FROM event_meta WHERE event_key=$1",
+          [sib.event_key]
+        );
+        if (sibMeta && sibMeta.locked === 1) continue;
+        if (sibMeta) {
+          await db.run(
+            `UPDATE event_meta
+             SET category=COALESCE($1, category),
+                 is_major=$2,
+                 project_id=$3,
+                 notes_url=$4,
+                 locked=1,
+                 updated_at=NOW()::TEXT
+             WHERE event_key=$5`,
+            [category, isMajor, projectId, notesUrl, sib.event_key]
+          );
+        } else {
+          await db.run(
+            `INSERT INTO event_meta (event_key, category, is_major, project_id, notes_url, locked, updated_at)
+             VALUES ($1, $2, $3, $4, $5, 1, NOW()::TEXT)`,
+            [sib.event_key, category || "unknown", isMajor, projectId, notesUrl]
+          );
+        }
+      }
+    }
+
     return ok({ ok: true });
   } catch (e) {
     return handleError(e);

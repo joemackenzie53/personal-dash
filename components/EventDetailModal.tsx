@@ -12,6 +12,7 @@ type EventRow = {
   start: string;
   end: string;
   all_day: number;
+  recurring_event_id: string | null;
   category: string | null;
   is_major: number | null;
   project_id: string | null;
@@ -106,6 +107,17 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
               {fmtDate(event.start)}
               {!allDay ? <> • {fmtTime(event.start)} – {fmtTime(event.end)}</> : <span className="text-neutral-500"> (all day)</span>}
             </div>
+            {event.recurring_event_id && (
+              <div className="mt-1 flex items-center gap-1 text-xs text-neutral-500">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="17 1 21 5 17 9" />
+                  <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+                  <polyline points="7 23 3 19 7 15" />
+                  <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+                </svg>
+                Recurring event
+              </div>
+            )}
             {event.location && (
               <div className="mt-1 text-sm text-neutral-500">{event.location}</div>
             )}
@@ -170,6 +182,12 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
           </label>
 
           {err && <div className="text-sm text-red-600">{err}</div>}
+
+          {event.recurring_event_id && (
+            <div className="rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-700">
+              This is a recurring event. Saving will apply your changes to all instances in the series (unless you&apos;ve already customised one individually).
+            </div>
+          )}
 
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="secondary" onClick={onClose}>Cancel</Button>

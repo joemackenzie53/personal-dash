@@ -29,7 +29,8 @@ export async function GET(req: Request) {
 
     const sql = `
       SELECT
-        e.event_key, e.calendar_id, e.google_event_id, e.title, e.description, e.location,
+        e.event_key, e.calendar_id, e.google_event_id, e.recurring_event_id,
+        e.title, e.description, e.location,
         e."start", e."end", e.all_day, e.status, e.deleted,
         m.category, m.is_major, m.project_id, m.notes_url, m.locked
       FROM events e

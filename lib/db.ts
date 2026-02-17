@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS events (
   calendar_id TEXT NOT NULL,
   google_event_id TEXT NOT NULL,
   ical_uid TEXT,
+  recurring_event_id TEXT,
   title TEXT,
   description TEXT,
   location TEXT,
