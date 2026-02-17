@@ -37,6 +37,7 @@ type ActionRow = {
   due_at: string | null;
   parent_type: string | null;
   parent_id: string | null;
+  parent_name: string | null;
 };
 
 type EventOption = { event_key: string; title: string };
