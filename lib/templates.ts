@@ -6,6 +6,7 @@ type TemplateAction = {
   title: string;
   priority: string;
   parent_id: string;
+  due_days_before: number | null;
 };
 
 export async function propagateTemplates(eventKey: string): Promise<number> {
@@ -37,11 +38,20 @@ export async function propagateTemplates(eventKey: string): Promise<number> {
   for (const tpl of templates) {
     if (alreadyGenerated.has(tpl.id)) continue;
 
+    let dueAt: string | null = null;
+    if (tpl.due_days_before != null && event.start) {
+      const eventDate = new Date(event.start);
+      if (!isNaN(eventDate.getTime())) {
+        eventDate.setDate(eventDate.getDate() - tpl.due_days_before);
+        dueAt = eventDate.toISOString();
+      }
+    }
+
     const id = newId("act");
     await db.run(
-      `INSERT INTO actions (id, title, status, priority, tags, parent_type, parent_id, checklist, is_template, generated_from_action_id, created_at, updated_at)
-       VALUES ($1, $2, 'open', $3, '[]', 'event', $4, '[]', 0, $5, NOW()::TEXT, NOW()::TEXT)`,
-      [id, tpl.title, tpl.priority, eventKey, tpl.id]
+      `INSERT INTO actions (id, title, status, priority, tags, parent_type, parent_id, checklist, is_template, generated_from_action_id, due_at, due_days_before, created_at, updated_at)
+       VALUES ($1, $2, 'open', $3, '[]', 'event', $4, '[]', 0, $5, $6, $7, NOW()::TEXT, NOW()::TEXT)`,
+      [id, tpl.title, tpl.priority, eventKey, tpl.id, dueAt, tpl.due_days_before]
     );
     created++;
   }
@@ -117,7 +127,7 @@ async function findTemplatesForSeries(event: {
   if (allKeys.length > 0) {
     const placeholders = allKeys.map((_, i) => `$${i + 1}`).join(",");
     const rows = await db.all<TemplateAction>(
-      `SELECT id, title, priority, parent_id FROM actions
+      `SELECT id, title, priority, parent_id, due_days_before FROM actions
        WHERE is_template=1 AND parent_type='event' AND parent_id IN (${placeholders})`,
       allKeys
     );

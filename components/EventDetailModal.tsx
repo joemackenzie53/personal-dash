@@ -33,6 +33,7 @@ type ActionRow = {
   due_at: string | null;
   is_template: number;
   generated_from_action_id: string | null;
+  due_days_before: number | null;
 };
 
 type CategoryRow = { id: string; name: string };
@@ -56,6 +57,7 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
   const [actions, setActions] = React.useState<ActionRow[]>([]);
   const [seriesTemplates, setSeriesTemplates] = React.useState<ActionRow[]>([]);
   const [newTemplateTitle, setNewTemplateTitle] = React.useState("");
+  const [newTemplateDaysBefore, setNewTemplateDaysBefore] = React.useState<string>("");
   const [newInstanceTitle, setNewInstanceTitle] = React.useState("");
   const [addingAction, setAddingAction] = React.useState(false);
   const [actionsTab, setActionsTab] = React.useState<"instance" | "recurring">("instance");
@@ -99,6 +101,7 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
       setIsMajor(!!event.is_major);
       setErr(null);
       setNewTemplateTitle("");
+      setNewTemplateDaysBefore("");
       setNewInstanceTitle("");
       setActionsTab("instance");
       loadActions(event.event_key);
@@ -140,17 +143,28 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
     if (!event || !title.trim()) return;
     setAddingAction(true);
     try {
+      const payload: Record<string, unknown> = {
+        title: title.trim(),
+        parentType: "event",
+        parentId: event.event_key,
+        isTemplate,
+      };
+      if (isTemplate && newTemplateDaysBefore.trim() !== "") {
+        const days = parseInt(newTemplateDaysBefore, 10);
+        if (!isNaN(days) && days >= 0) {
+          payload.dueDaysBefore = days;
+        }
+      }
       await api("/api/actions", {
         method: "POST",
-        body: JSON.stringify({
-          title: title.trim(),
-          parentType: "event",
-          parentId: event.event_key,
-          isTemplate,
-        }),
+        body: JSON.stringify(payload),
       });
-      if (isTemplate) setNewTemplateTitle("");
-      else setNewInstanceTitle("");
+      if (isTemplate) {
+        setNewTemplateTitle("");
+        setNewTemplateDaysBefore("");
+      } else {
+        setNewInstanceTitle("");
+      }
       await loadActions(event.event_key);
     } catch (e: any) {
       setErr(e?.message || "Failed to add action");
@@ -210,6 +224,11 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
           </svg>
         </span>
         <span className="flex-1 text-sm">{a.title}</span>
+        {a.due_days_before != null && (
+          <span className="shrink-0 rounded bg-neutral-100 px-1.5 py-0.5 text-xs text-neutral-500">
+            {a.due_days_before === 0 ? "day of" : `${a.due_days_before}d before`}
+          </span>
+        )}
         <button
           onClick={() => deleteAction(a.id)}
           className="shrink-0 rounded p-0.5 text-neutral-300 opacity-0 group-hover:opacity-100 hover:text-red-500"
@@ -430,7 +449,16 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
                   value={newTemplateTitle}
                   onChange={(e) => setNewTemplateTitle(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") addAction(newTemplateTitle, true); }}
-                  className="text-sm"
+                  className="flex-1 text-sm"
+                />
+                <Input
+                  type="number"
+                  min="0"
+                  placeholder="days before"
+                  value={newTemplateDaysBefore}
+                  onChange={(e) => setNewTemplateDaysBefore(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") addAction(newTemplateTitle, true); }}
+                  className="w-28 text-sm"
                 />
                 <Button onClick={() => addAction(newTemplateTitle, true)} disabled={!newTemplateTitle.trim() || addingAction}>
                   Add

@@ -95,6 +95,7 @@ CREATE TABLE IF NOT EXISTS actions (
   checklist TEXT NOT NULL DEFAULT '[]',
   is_template INTEGER NOT NULL DEFAULT 0,
   generated_from_action_id TEXT,
+  due_days_before INTEGER,
   created_at TEXT NOT NULL DEFAULT (NOW()::TEXT),
   updated_at TEXT NOT NULL DEFAULT (NOW()::TEXT)
 );
