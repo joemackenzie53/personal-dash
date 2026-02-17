@@ -190,14 +190,14 @@ export async function syncAllSelected(): Promise<SyncResult> {
 
         const meta = await db.get<{ locked: number }>("SELECT locked FROM event_meta WHERE event_key=$1", [eventKey]);
         if (!meta) {
-          const category = classifyEvent({ title: ev.summary || "", calendarIsHoliday, calendarSummary });
+          const category = await classifyEvent({ title: ev.summary || "", calendarIsHoliday, calendarSummary });
           await db.run(
             `INSERT INTO event_meta (event_key, category, is_major, project_id, notes_url, locked, updated_at)
              VALUES ($1, $2, 0, NULL, NULL, 0, NOW()::TEXT)`,
             [eventKey, category]
           );
         } else if (meta.locked === 0) {
-          const category = classifyEvent({ title: ev.summary || "", calendarIsHoliday, calendarSummary });
+          const category = await classifyEvent({ title: ev.summary || "", calendarIsHoliday, calendarSummary });
           await db.run(
             `UPDATE event_meta SET category=$1, updated_at=NOW()::TEXT WHERE event_key=$2`,
             [category, eventKey]

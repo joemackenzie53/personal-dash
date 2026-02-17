@@ -1,31 +1,54 @@
-export type EventCategory =
-  | "unknown"
-  | "holiday"
-  | "birthday"
-  | "anniversary"
-  | "christmas"
-  | "easter"
-  | "valentines"
-  | "travel"
-  | "social"
-  | "admin";
+import { getDb } from "@/lib/db";
 
-export function classifyEvent(opts: { title?: string | null; calendarIsHoliday?: boolean; calendarSummary?: string | null }): EventCategory {
+type CategoryRule = { name: string; pattern: string | null };
+
+let cachedRules: CategoryRule[] | null = null;
+let cacheTime = 0;
+const CACHE_TTL = 60_000;
+
+async function loadRules(): Promise<CategoryRule[]> {
+  const now = Date.now();
+  if (cachedRules && now - cacheTime < CACHE_TTL) return cachedRules;
+  const db = await getDb();
+  const rows = await db.all<CategoryRule>(
+    "SELECT name, pattern FROM categories ORDER BY sort_order ASC, name ASC"
+  );
+  cachedRules = rows;
+  cacheTime = now;
+  return rows;
+}
+
+export function invalidateClassifyCache() {
+  cachedRules = null;
+}
+
+export async function classifyEvent(opts: {
+  title?: string | null;
+  calendarIsHoliday?: boolean;
+  calendarSummary?: string | null;
+}): Promise<string> {
   const title = (opts.title || "").toLowerCase();
   const cal = (opts.calendarSummary || "").toLowerCase();
+  const calIsHoliday = opts.calendarIsHoliday || false;
 
-  const holidayLike = opts.calendarIsHoliday || cal.includes("holidays") || cal.includes("holiday");
-  if (holidayLike) return "holiday";
+  const rules = await loadRules();
 
-  if (/(\bbirthday\b|\bbday\b)/i.test(title)) return "birthday";
-  if (/\banniversary\b/i.test(title)) return "anniversary";
-  if (/(\bchristmas\b|\bxmas\b)/i.test(title)) return "christmas";
-  if (/\beaster\b/i.test(title)) return "easter";
-  if (/\bvalentine\b/i.test(title)) return "valentines";
+  for (const rule of rules) {
+    if (!rule.pattern) continue;
 
-  // lightweight heuristics
-  if (/(\bflight\b|\bhotel\b|\btrain\b|\bairport\b|\bairbnb\b)/i.test(title)) return "travel";
-  if (/(\bdinner\b|\blunch\b|\bdrinks\b|\bparty\b)/i.test(title)) return "social";
+    if (rule.pattern === "calendar:holidays") {
+      if (calIsHoliday || cal.includes("holidays") || cal.includes("holiday")) {
+        return rule.name;
+      }
+      continue;
+    }
+
+    try {
+      const regex = new RegExp(rule.pattern, "i");
+      if (regex.test(title)) return rule.name;
+    } catch {
+    }
+  }
 
   return "unknown";
 }

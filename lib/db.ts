@@ -111,6 +111,7 @@ CREATE INDEX IF NOT EXISTS idx_actions_parent ON actions(parent_type, parent_id)
 CREATE TABLE IF NOT EXISTS categories (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL UNIQUE,
+  pattern TEXT,
   sort_order INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (NOW()::TEXT)
 );
@@ -137,11 +138,22 @@ async function initSchema(pool: pg.Pool) {
 
   const catCount = await pool.query("SELECT COUNT(*) as cnt FROM categories");
   if (parseInt(catCount.rows[0].cnt) === 0) {
-    const defaults = ["unknown","holiday","birthday","anniversary","christmas","easter","valentines","travel","social","admin"];
+    const defaults: Array<[string, string | null]> = [
+      ["unknown", null],
+      ["holiday", "calendar:holidays"],
+      ["birthday", "\\bbirthday\\b|\\bbday\\b"],
+      ["anniversary", "\\banniversary\\b"],
+      ["christmas", "\\bchristmas\\b|\\bxmas\\b"],
+      ["easter", "\\beaster\\b"],
+      ["valentines", "\\bvalentine\\b"],
+      ["travel", "\\bflight\\b|\\bhotel\\b|\\btrain\\b|\\bairport\\b|\\bairbnb\\b"],
+      ["social", "\\bdinner\\b|\\blunch\\b|\\bdrinks\\b|\\bparty\\b"],
+      ["admin", null],
+    ];
     for (let i = 0; i < defaults.length; i++) {
       await pool.query(
-        "INSERT INTO categories (id, name, sort_order) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
-        [defaults[i], defaults[i], i]
+        "INSERT INTO categories (id, name, pattern, sort_order) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING",
+        [defaults[i][0], defaults[i][0], defaults[i][1], i]
       );
     }
   }

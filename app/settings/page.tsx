@@ -26,6 +26,7 @@ type CalendarRow = {
 type CategoryRow = {
   id: string;
   name: string;
+  pattern: string | null;
   sort_order: number;
 };
 
@@ -43,8 +44,10 @@ export default function SettingsPage() {
   const [selected, setSelected] = React.useState<string[]>([]);
 
   const [newCatName, setNewCatName] = React.useState("");
+  const [newCatPattern, setNewCatPattern] = React.useState("");
   const [editingCat, setEditingCat] = React.useState<string | null>(null);
   const [editCatName, setEditCatName] = React.useState("");
+  const [editCatPattern, setEditCatPattern] = React.useState("");
 
   async function load() {
     setLoading(true);
@@ -139,9 +142,10 @@ export default function SettingsPage() {
     try {
       await api("/api/categories", {
         method: "POST",
-        body: JSON.stringify({ name: newCatName.trim() }),
+        body: JSON.stringify({ name: newCatName.trim(), pattern: newCatPattern.trim() || null }),
       });
       setNewCatName("");
+      setNewCatPattern("");
       const cats = await api<{ categories: CategoryRow[] }>("/api/categories");
       setCategories(cats.categories);
     } catch (e: any) {
@@ -149,13 +153,13 @@ export default function SettingsPage() {
     }
   }
 
-  async function updateCategory(id: string, name: string) {
+  async function updateCategory(id: string, name: string, pattern: string) {
     if (!name.trim()) return;
     setErr(null);
     try {
       await api(`/api/categories/${id}`, {
         method: "PUT",
-        body: JSON.stringify({ name: name.trim() }),
+        body: JSON.stringify({ name: name.trim(), pattern: pattern.trim() || null }),
       });
       setEditingCat(null);
       const cats = await api<{ categories: CategoryRow[] }>("/api/categories");
@@ -302,16 +306,28 @@ export default function SettingsPage() {
       <Card>
         <CardHeader>
           <div className="text-sm font-semibold">Event categories</div>
-          <div className="text-xs text-neutral-600">Manage the categories used to classify events during triage.</div>
+          <div className="text-xs text-neutral-600">
+            Manage event categories and their auto-match rules. Events with titles matching the keywords
+            will be automatically categorised during sync. Use <code className="rounded bg-neutral-100 px-1">calendar:holidays</code> to match holiday calendars.
+          </div>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex gap-2">
-            <Input
-              value={newCatName}
-              onChange={(e) => setNewCatName(e.target.value)}
-              placeholder="New category name"
-              onKeyDown={(e) => { if (e.key === "Enter") addCategory(); }}
-            />
+            <div className="flex flex-1 flex-col gap-1">
+              <Input
+                value={newCatName}
+                onChange={(e) => setNewCatName(e.target.value)}
+                placeholder="Category name"
+                onKeyDown={(e) => { if (e.key === "Enter") addCategory(); }}
+              />
+              <Input
+                value={newCatPattern}
+                onChange={(e) => setNewCatPattern(e.target.value)}
+                placeholder="Auto-match keywords (e.g. \bbirthday\b|\bbday\b)"
+                onKeyDown={(e) => { if (e.key === "Enter") addCategory(); }}
+                className="text-xs"
+              />
+            </div>
             <Button onClick={addCategory} disabled={!newCatName.trim()}>Add</Button>
           </div>
 
@@ -319,25 +335,48 @@ export default function SettingsPage() {
 
           <ul className="space-y-1">
             {categories.map((cat) => (
-              <li key={cat.id} className="flex items-center justify-between gap-2 rounded-lg border border-neutral-200 px-3 py-2">
+              <li key={cat.id} className="rounded-lg border border-neutral-200 px-3 py-2">
                 {editingCat === cat.id ? (
-                  <div className="flex flex-1 gap-2">
-                    <Input
-                      value={editCatName}
-                      onChange={(e) => setEditCatName(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Enter") updateCategory(cat.id, editCatName); if (e.key === "Escape") setEditingCat(null); }}
-                      className="text-sm"
-                      autoFocus
-                    />
-                    <Button onClick={() => updateCategory(cat.id, editCatName)} disabled={!editCatName.trim()}>Save</Button>
-                    <Button variant="secondary" onClick={() => setEditingCat(null)}>Cancel</Button>
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <div className="flex flex-1 flex-col gap-1">
+                        <Input
+                          value={editCatName}
+                          onChange={(e) => setEditCatName(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Escape") setEditingCat(null); }}
+                          className="text-sm"
+                          placeholder="Category name"
+                          autoFocus
+                        />
+                        <Input
+                          value={editCatPattern}
+                          onChange={(e) => setEditCatPattern(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Escape") setEditingCat(null); }}
+                          className="text-xs"
+                          placeholder="Auto-match keywords (leave empty for manual only)"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <Button onClick={() => updateCategory(cat.id, editCatName, editCatPattern)} disabled={!editCatName.trim()}>Save</Button>
+                        <Button variant="secondary" onClick={() => setEditingCat(null)}>Cancel</Button>
+                      </div>
+                    </div>
                   </div>
                 ) : (
-                  <>
-                    <span className="text-sm">{cat.name}</span>
-                    <div className="flex gap-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <span className="text-sm font-medium">{cat.name}</span>
+                      {cat.pattern ? (
+                        <div className="mt-0.5 truncate text-xs text-neutral-500" title={cat.pattern}>
+                          <span className="text-neutral-400">auto-match:</span> {cat.pattern}
+                        </div>
+                      ) : (
+                        <div className="mt-0.5 text-xs text-neutral-400">manual only</div>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 gap-1">
                       <button
-                        onClick={() => { setEditingCat(cat.id); setEditCatName(cat.name); }}
+                        onClick={() => { setEditingCat(cat.id); setEditCatName(cat.name); setEditCatPattern(cat.pattern || ""); }}
                         className="rounded p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600"
                         title="Edit"
                       >
@@ -357,7 +396,7 @@ export default function SettingsPage() {
                         </svg>
                       </button>
                     </div>
-                  </>
+                  </div>
                 )}
               </li>
             ))}

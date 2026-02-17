@@ -103,6 +103,7 @@ CREATE INDEX IF NOT EXISTS idx_actions_parent ON actions(parent_type, parent_id)
 CREATE TABLE IF NOT EXISTS categories (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL UNIQUE,
+  pattern TEXT,
   sort_order INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (NOW()::TEXT)
 );

@@ -1,6 +1,7 @@
 import { ok, handleError, bad } from "@/lib/http";
 import { requireAuth } from "@/lib/session";
 import { getDb } from "@/lib/db";
+import { invalidateClassifyCache } from "@/lib/classify";
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -17,6 +18,11 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       updates.push(`name=$${idx++}`);
       vals.push(body.name.trim());
     }
+    if ("pattern" in body) {
+      const pat = typeof body.pattern === "string" ? body.pattern.trim() || null : null;
+      updates.push(`pattern=$${idx++}`);
+      vals.push(pat);
+    }
     if (typeof body?.sort_order === "number") {
       updates.push(`sort_order=$${idx++}`);
       vals.push(body.sort_order);
@@ -26,6 +32,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
     vals.push(id);
     await db.run(`UPDATE categories SET ${updates.join(", ")} WHERE id=$${idx}`, vals);
+    invalidateClassifyCache();
     return ok({ ok: true });
   } catch (e: any) {
     if (e?.code === "23505") return bad(409, "Category name already exists");
@@ -39,6 +46,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     const { id } = await params;
     const db = await getDb();
     await db.run("DELETE FROM categories WHERE id=$1", [id]);
+    invalidateClassifyCache();
     return ok({ ok: true });
   } catch (e) {
     return handleError(e);
