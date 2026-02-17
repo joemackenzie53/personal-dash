@@ -33,18 +33,7 @@ type ActionRow = {
   due_at: string | null;
 };
 
-const CATEGORIES = [
-  "unknown",
-  "holiday",
-  "birthday",
-  "anniversary",
-  "christmas",
-  "easter",
-  "valentines",
-  "travel",
-  "social",
-  "admin",
-];
+type CategoryRow = { id: string; name: string };
 
 type Props = {
   event: EventRow | null;
@@ -61,9 +50,16 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
   const [saving, setSaving] = React.useState(false);
   const [err, setErr] = React.useState<string | null>(null);
 
+  const [categories, setCategories] = React.useState<CategoryRow[]>([]);
   const [actions, setActions] = React.useState<ActionRow[]>([]);
   const [newActionTitle, setNewActionTitle] = React.useState("");
   const [addingAction, setAddingAction] = React.useState(false);
+
+  React.useEffect(() => {
+    api<{ categories: CategoryRow[] }>("/api/categories")
+      .then((res) => setCategories(res.categories))
+      .catch(() => setCategories([]));
+  }, []);
 
   async function loadActions(eventKey: string) {
     try {
@@ -210,9 +206,10 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
             <div className="space-y-1">
               <div className="text-xs font-medium text-neutral-600">Category</div>
               <Select value={category} onChange={(e) => setCategory(e.target.value)}>
-                {CATEGORIES.map((c) => (
-                  <option key={c} value={c}>{c}</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.name}>{c.name}</option>
                 ))}
+                {categories.length === 0 && <option value="unknown">unknown</option>}
               </Select>
             </div>
 

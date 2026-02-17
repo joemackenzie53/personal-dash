@@ -99,3 +99,10 @@ CREATE TABLE IF NOT EXISTS actions (
 
 CREATE INDEX IF NOT EXISTS idx_actions_status_due ON actions(status, due_at);
 CREATE INDEX IF NOT EXISTS idx_actions_parent ON actions(parent_type, parent_id);
+
+CREATE TABLE IF NOT EXISTS categories (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (NOW()::TEXT)
+);

@@ -107,6 +107,13 @@ CREATE TABLE IF NOT EXISTS actions (
 
 CREATE INDEX IF NOT EXISTS idx_actions_status_due ON actions(status, due_at);
 CREATE INDEX IF NOT EXISTS idx_actions_parent ON actions(parent_type, parent_id);
+
+CREATE TABLE IF NOT EXISTS categories (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (NOW()::TEXT)
+);
 `;
 
 function getPool(): pg.Pool {
@@ -127,6 +134,18 @@ async function initSchema(pool: pg.Pool) {
      VALUES (1, 182, 10, '[]')
      ON CONFLICT DO NOTHING`
   );
+
+  const catCount = await pool.query("SELECT COUNT(*) as cnt FROM categories");
+  if (parseInt(catCount.rows[0].cnt) === 0) {
+    const defaults = ["unknown","holiday","birthday","anniversary","christmas","easter","valentines","travel","social","admin"];
+    for (let i = 0; i < defaults.length; i++) {
+      await pool.query(
+        "INSERT INTO categories (id, name, sort_order) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
+        [defaults[i], defaults[i], i]
+      );
+    }
+  }
+
   initialized = true;
 }
 

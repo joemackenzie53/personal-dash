@@ -23,9 +23,16 @@ type CalendarRow = {
   selected: number;
 };
 
+type CategoryRow = {
+  id: string;
+  name: string;
+  sort_order: number;
+};
+
 export default function SettingsPage() {
   const [settings, setSettings] = React.useState<Settings | null>(null);
   const [calendars, setCalendars] = React.useState<CalendarRow[]>([]);
+  const [categories, setCategories] = React.useState<CategoryRow[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
   const [err, setErr] = React.useState<string | null>(null);
@@ -34,6 +41,10 @@ export default function SettingsPage() {
   const [horizonDays, setHorizonDays] = React.useState(182);
   const [refreshIntervalMinutes, setRefreshIntervalMinutes] = React.useState(10);
   const [selected, setSelected] = React.useState<string[]>([]);
+
+  const [newCatName, setNewCatName] = React.useState("");
+  const [editingCat, setEditingCat] = React.useState<string | null>(null);
+  const [editCatName, setEditCatName] = React.useState("");
 
   async function load() {
     setLoading(true);
@@ -46,12 +57,18 @@ export default function SettingsPage() {
       setRefreshIntervalMinutes(s.refreshIntervalMinutes);
       setSelected(s.selectedCalendarIds);
 
-      // calendars need auth cookie; if not authed, it'll error. That's fine.
       try {
         const c = await api<{ calendars: CalendarRow[] }>("/api/calendars");
         setCalendars(c.calendars);
       } catch {
         setCalendars([]);
+      }
+
+      try {
+        const cats = await api<{ categories: CategoryRow[] }>("/api/categories");
+        setCategories(cats.categories);
+      } catch {
+        setCategories([]);
       }
     } catch (e: any) {
       setErr(e?.message || "Failed to load");
@@ -114,6 +131,49 @@ export default function SettingsPage() {
 
   function toggleCalendar(id: string) {
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
+
+  async function addCategory() {
+    if (!newCatName.trim()) return;
+    setErr(null);
+    try {
+      await api("/api/categories", {
+        method: "POST",
+        body: JSON.stringify({ name: newCatName.trim() }),
+      });
+      setNewCatName("");
+      const cats = await api<{ categories: CategoryRow[] }>("/api/categories");
+      setCategories(cats.categories);
+    } catch (e: any) {
+      setErr(e?.message || "Failed to add category");
+    }
+  }
+
+  async function updateCategory(id: string, name: string) {
+    if (!name.trim()) return;
+    setErr(null);
+    try {
+      await api(`/api/categories/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({ name: name.trim() }),
+      });
+      setEditingCat(null);
+      const cats = await api<{ categories: CategoryRow[] }>("/api/categories");
+      setCategories(cats.categories);
+    } catch (e: any) {
+      setErr(e?.message || "Failed to update category");
+    }
+  }
+
+  async function deleteCategory(id: string) {
+    setErr(null);
+    try {
+      await api(`/api/categories/${id}`, { method: "DELETE" });
+      const cats = await api<{ categories: CategoryRow[] }>("/api/categories");
+      setCategories(cats.categories);
+    } catch (e: any) {
+      setErr(e?.message || "Failed to delete category");
+    }
   }
 
   return (
@@ -238,6 +298,72 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <div className="text-sm font-semibold">Event categories</div>
+          <div className="text-xs text-neutral-600">Manage the categories used to classify events during triage.</div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex gap-2">
+            <Input
+              value={newCatName}
+              onChange={(e) => setNewCatName(e.target.value)}
+              placeholder="New category name"
+              onKeyDown={(e) => { if (e.key === "Enter") addCategory(); }}
+            />
+            <Button onClick={addCategory} disabled={!newCatName.trim()}>Add</Button>
+          </div>
+
+          {categories.length === 0 && <div className="text-sm text-neutral-500">No categories yet.</div>}
+
+          <ul className="space-y-1">
+            {categories.map((cat) => (
+              <li key={cat.id} className="flex items-center justify-between gap-2 rounded-lg border border-neutral-200 px-3 py-2">
+                {editingCat === cat.id ? (
+                  <div className="flex flex-1 gap-2">
+                    <Input
+                      value={editCatName}
+                      onChange={(e) => setEditCatName(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") updateCategory(cat.id, editCatName); if (e.key === "Escape") setEditingCat(null); }}
+                      className="text-sm"
+                      autoFocus
+                    />
+                    <Button onClick={() => updateCategory(cat.id, editCatName)} disabled={!editCatName.trim()}>Save</Button>
+                    <Button variant="secondary" onClick={() => setEditingCat(null)}>Cancel</Button>
+                  </div>
+                ) : (
+                  <>
+                    <span className="text-sm">{cat.name}</span>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => { setEditingCat(cat.id); setEditCatName(cat.name); }}
+                        className="rounded p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600"
+                        title="Edit"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => deleteCategory(cat.id)}
+                        className="rounded p-1 text-neutral-400 hover:bg-red-50 hover:text-red-600"
+                        title="Delete"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6" />
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                        </svg>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
