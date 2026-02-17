@@ -5,6 +5,7 @@ import { api } from "@/lib/client";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { Notice } from "@/components/Notice";
 import { Badge } from "@/components/ui/Badge";
 import { fmtDate, fmtTime, isAllDay } from "@/lib/format";
@@ -69,6 +70,7 @@ export default function NowPage() {
 
   const [newTitle, setNewTitle] = React.useState("");
   const [newDue, setNewDue] = React.useState<string>("");
+  const [newParent, setNewParent] = React.useState<string>("");
 
   async function load() {
     setLoading(true);
@@ -112,12 +114,20 @@ export default function NowPage() {
     setErr(null);
     try {
       const dueAt = newDue ? new Date(newDue).toISOString() : null;
+      let parentType: string | null = null;
+      let parentId: string | null = null;
+      if (newParent) {
+        const [type, ...rest] = newParent.split(":");
+        parentType = type;
+        parentId = rest.join(":");
+      }
       await api("/api/actions", {
         method: "POST",
-        body: JSON.stringify({ title: newTitle, dueAt })
+        body: JSON.stringify({ title: newTitle, dueAt, parentType, parentId })
       });
       setNewTitle("");
       setNewDue("");
+      setNewParent("");
       await load();
     } catch (e: any) {
       setErr(e?.message || "Failed to add");
@@ -168,9 +178,22 @@ export default function NowPage() {
           <div className="text-xs text-neutral-600">Capture an action fast (you can triage later).</div>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-2 sm:grid-cols-[1fr,200px,auto]">
-            <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="e.g. Order Gizem's birthday present" />
+          <div className="grid gap-2 sm:grid-cols-[1fr,160px,180px,auto]">
+            <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="e.g. Order Gizem's birthday present" onKeyDown={(e) => { if (e.key === "Enter" && newTitle.trim()) addAction(); }} />
             <Input type="date" value={newDue} onChange={(e) => setNewDue(e.target.value)} />
+            <Select value={newParent} onChange={(e) => setNewParent(e.target.value)} className="text-sm">
+              <option value="">No link</option>
+              {projects.length > 0 && <optgroup label="Projects">
+                {projects.map((p) => (
+                  <option key={p.id} value={`project:${p.id}`}>{p.name}</option>
+                ))}
+              </optgroup>}
+              {events.length > 0 && <optgroup label="Upcoming events">
+                {events.slice(0, 15).map((e) => (
+                  <option key={e.event_key} value={`event:${e.event_key}`}>{e.title || "(no title)"}</option>
+                ))}
+              </optgroup>}
+            </Select>
             <Button onClick={addAction} disabled={!newTitle.trim()}>Add</Button>
           </div>
         </CardContent>

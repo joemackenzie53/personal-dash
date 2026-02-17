@@ -25,6 +25,14 @@ type EventRow = {
 
 type ProjectRow = { id: string; name: string; status: string };
 
+type ActionRow = {
+  id: string;
+  title: string;
+  status: string;
+  priority: string;
+  due_at: string | null;
+};
+
 const CATEGORIES = [
   "unknown",
   "holiday",
@@ -53,6 +61,21 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
   const [saving, setSaving] = React.useState(false);
   const [err, setErr] = React.useState<string | null>(null);
 
+  const [actions, setActions] = React.useState<ActionRow[]>([]);
+  const [newActionTitle, setNewActionTitle] = React.useState("");
+  const [addingAction, setAddingAction] = React.useState(false);
+
+  async function loadActions(eventKey: string) {
+    try {
+      const res = await api<{ actions: ActionRow[] }>(
+        `/api/actions?status=all&parentType=event&parentId=${encodeURIComponent(eventKey)}`
+      );
+      setActions(res.actions);
+    } catch {
+      setActions([]);
+    }
+  }
+
   React.useEffect(() => {
     if (event) {
       setCategory(event.category || "unknown");
@@ -60,6 +83,10 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
       setNotesUrl(event.notes_url || "");
       setIsMajor(!!event.is_major);
       setErr(null);
+      setNewActionTitle("");
+      loadActions(event.event_key);
+    } else {
+      setActions([]);
     }
   }, [event]);
 
@@ -91,13 +118,50 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
     }
   }
 
+  async function addAction() {
+    if (!event || !newActionTitle.trim()) return;
+    setAddingAction(true);
+    try {
+      await api("/api/actions", {
+        method: "POST",
+        body: JSON.stringify({
+          title: newActionTitle.trim(),
+          parentType: "event",
+          parentId: event.event_key,
+        }),
+      });
+      setNewActionTitle("");
+      await loadActions(event.event_key);
+    } catch (e: any) {
+      setErr(e?.message || "Failed to add action");
+    } finally {
+      setAddingAction(false);
+    }
+  }
+
+  async function toggleAction(action: ActionRow) {
+    const newStatus = action.status === "open" ? "done" : "open";
+    try {
+      await api(`/api/actions/${action.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (event) await loadActions(event.event_key);
+    } catch (e: any) {
+      setErr(e?.message || "Failed to update action");
+    }
+  }
+
+  const openActions = actions.filter((a) => a.status === "open");
+  const doneActions = actions.filter((a) => a.status === "done");
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 transition-opacity"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg rounded-xl border border-neutral-200 bg-white shadow-lg"
+        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-neutral-200 bg-white shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3 p-4 pb-2">
@@ -105,7 +169,7 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
             <div className="text-base font-semibold">{event.title || "(no title)"}</div>
             <div className="mt-1 text-sm text-neutral-600">
               {fmtDate(event.start)}
-              {!allDay ? <> • {fmtTime(event.start)} – {fmtTime(event.end)}</> : <span className="text-neutral-500"> (all day)</span>}
+              {!allDay ? <> &bull; {fmtTime(event.start)} &ndash; {fmtTime(event.end)}</> : <span className="text-neutral-500"> (all day)</span>}
             </div>
             {event.recurring_event_id && (
               <div className="mt-1 flex items-center gap-1 text-xs text-neutral-500">
@@ -192,9 +256,60 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="secondary" onClick={onClose}>Cancel</Button>
             <Button onClick={handleSave} disabled={saving}>
-              {saving ? "Saving…" : "Save"}
+              {saving ? "Saving\u2026" : "Save"}
             </Button>
           </div>
+        </div>
+
+        <div className="border-t border-neutral-200 p-4">
+          <div className="flex items-center justify-between">
+            <div className="text-xs font-semibold uppercase tracking-wide text-neutral-600">Actions</div>
+            <div className="text-xs text-neutral-500">{openActions.length} open</div>
+          </div>
+
+          <div className="mt-2 flex gap-2">
+            <Input
+              placeholder="Add an action for this event\u2026"
+              value={newActionTitle}
+              onChange={(e) => setNewActionTitle(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") addAction(); }}
+              className="text-sm"
+            />
+            <Button onClick={addAction} disabled={!newActionTitle.trim() || addingAction}>
+              {addingAction ? "Adding\u2026" : "Add"}
+            </Button>
+          </div>
+
+          {actions.length > 0 && (
+            <ul className="mt-3 space-y-1">
+              {openActions.map((a) => (
+                <li key={a.id} className="flex items-center gap-2 rounded px-1 py-1 hover:bg-neutral-50">
+                  <button
+                    onClick={() => toggleAction(a)}
+                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded border border-neutral-300 text-transparent hover:border-neutral-500"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </button>
+                  <span className="text-sm">{a.title}</span>
+                </li>
+              ))}
+              {doneActions.map((a) => (
+                <li key={a.id} className="flex items-center gap-2 rounded px-1 py-1 hover:bg-neutral-50">
+                  <button
+                    onClick={() => toggleAction(a)}
+                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded border border-green-400 bg-green-100 text-green-600"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </button>
+                  <span className="text-sm text-neutral-400 line-through">{a.title}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     </div>
