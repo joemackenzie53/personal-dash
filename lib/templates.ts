@@ -35,7 +35,6 @@ export async function propagateTemplates(eventKey: string): Promise<number> {
 
   let created = 0;
   for (const tpl of templates) {
-    if (tpl.parent_id === eventKey) continue;
     if (alreadyGenerated.has(tpl.id)) continue;
 
     const id = newId("act");
