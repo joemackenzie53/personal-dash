@@ -54,6 +54,7 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
 
   const [categories, setCategories] = React.useState<CategoryRow[]>([]);
   const [actions, setActions] = React.useState<ActionRow[]>([]);
+  const [seriesTemplates, setSeriesTemplates] = React.useState<ActionRow[]>([]);
   const [newTemplateTitle, setNewTemplateTitle] = React.useState("");
   const [newInstanceTitle, setNewInstanceTitle] = React.useState("");
   const [addingAction, setAddingAction] = React.useState(false);
@@ -74,12 +75,19 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
     } catch {}
 
     try {
-      const res = await api<{ actions: ActionRow[] }>(
-        `/api/actions?status=all&parentType=event&parentId=${encodeURIComponent(eventKey)}`
-      );
-      setActions(res.actions);
+      const [actionsRes, templatesRes] = await Promise.all([
+        api<{ actions: ActionRow[] }>(
+          `/api/actions?status=all&parentType=event&parentId=${encodeURIComponent(eventKey)}`
+        ),
+        api<{ templates: ActionRow[] }>(
+          `/api/actions/templates?eventKey=${encodeURIComponent(eventKey)}`
+        ),
+      ]);
+      setActions(actionsRes.actions);
+      setSeriesTemplates(templatesRes.templates);
     } catch {
       setActions([]);
+      setSeriesTemplates([]);
     }
   }
 
@@ -96,6 +104,7 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
       loadActions(event.event_key);
     } else {
       setActions([]);
+      setSeriesTemplates([]);
     }
   }, [event]);
 
@@ -172,7 +181,6 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
     }
   }
 
-  const templateActions = actions.filter((a) => a.is_template);
   const instanceActions = actions.filter((a) => !a.is_template);
   const instanceOpen = instanceActions.filter((a) => a.status === "open");
   const instanceDone = instanceActions.filter((a) => a.status === "done");
@@ -381,8 +389,8 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
               }`}
             >
               Recurring
-              {templateActions.length > 0 && (
-                <span className="ml-1.5 text-neutral-400">{templateActions.length}</span>
+              {seriesTemplates.length > 0 && (
+                <span className="ml-1.5 text-neutral-400">{seriesTemplates.length}</span>
               )}
             </button>
           </div>
@@ -429,12 +437,12 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
                 </Button>
               </div>
 
-              {templateActions.length > 0 && (
+              {seriesTemplates.length > 0 && (
                 <ul className="mt-2 space-y-0.5">
-                  {templateActions.map((a) => renderTemplateRow(a))}
+                  {seriesTemplates.map((a) => renderTemplateRow(a))}
                 </ul>
               )}
-              {templateActions.length === 0 && (
+              {seriesTemplates.length === 0 && (
                 <div className="mt-2 text-xs text-neutral-400 italic">
                   No recurring actions yet.
                 </div>

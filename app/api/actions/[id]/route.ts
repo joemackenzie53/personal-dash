@@ -1,6 +1,7 @@
 import { ok, handleError, bad } from "@/lib/http";
 import { requireAuth } from "@/lib/session";
 import { getDb, jsonStringify } from "@/lib/db";
+import { deleteTemplateAndCopies } from "@/lib/templates";
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -42,7 +43,18 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     await requireAuth();
     const { id } = await params;
     const db = await getDb();
-    await db.run("DELETE FROM actions WHERE id=$1", [id]);
+
+    const action = await db.get<{ is_template: number }>(
+      `SELECT is_template FROM actions WHERE id=$1`,
+      [id]
+    );
+
+    if (action && action.is_template) {
+      await deleteTemplateAndCopies(id);
+    } else {
+      await db.run("DELETE FROM actions WHERE id=$1", [id]);
+    }
+
     return ok({ ok: true });
   } catch (e) {
     return handleError(e);

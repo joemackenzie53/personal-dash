@@ -2,6 +2,7 @@ import { ok, handleError, bad } from "@/lib/http";
 import { requireAuth } from "@/lib/session";
 import { getDb, jsonParse, jsonStringify } from "@/lib/db";
 import { newId } from "@/lib/id";
+import { propagateToAllSiblings } from "@/lib/templates";
 
 export async function GET(req: Request) {
   try {
@@ -79,6 +80,10 @@ export async function POST(req: Request) {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW()::TEXT, NOW()::TEXT)`,
       [row.id, row.title, row.status, row.priority, row.start_at, row.due_at, row.snooze_until, row.tags, row.parent_type, row.parent_id, row.reference_url, row.checklist, row.is_template]
     );
+
+    if (isTemplate && row.parent_type === "event" && row.parent_id) {
+      await propagateToAllSiblings(row.parent_id).catch(() => {});
+    }
 
     return ok({ ok: true, id });
   } catch (e) {

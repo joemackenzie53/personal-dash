@@ -5,6 +5,7 @@ type TemplateAction = {
   id: string;
   title: string;
   priority: string;
+  parent_id: string;
 };
 
 export async function propagateTemplates(eventKey: string): Promise<number> {
@@ -22,7 +23,7 @@ export async function propagateTemplates(eventKey: string): Promise<number> {
   );
   if (!event) return 0;
 
-  const templates = await findTemplatesForEvent(event);
+  const templates = await findTemplatesForSeries(event);
   if (templates.length === 0) return 0;
 
   const existing = await db.all<{ generated_from_action_id: string }>(
@@ -34,6 +35,7 @@ export async function propagateTemplates(eventKey: string): Promise<number> {
 
   let created = 0;
   for (const tpl of templates) {
+    if (tpl.parent_id === eventKey) continue;
     if (alreadyGenerated.has(tpl.id)) continue;
 
     const id = newId("act");
@@ -48,7 +50,59 @@ export async function propagateTemplates(eventKey: string): Promise<number> {
   return created;
 }
 
-async function findTemplatesForEvent(event: {
+export async function propagateToAllSiblings(eventKey: string): Promise<number> {
+  const db = await getDb();
+
+  const event = await db.get<{
+    event_key: string;
+    title: string;
+    recurring_event_id: string | null;
+    calendar_id: string;
+  }>(
+    `SELECT event_key, title, recurring_event_id, calendar_id FROM events WHERE event_key=$1`,
+    [eventKey]
+  );
+  if (!event) return 0;
+
+  const siblings = await getSiblingKeys(event);
+  let total = 0;
+  for (const key of siblings) {
+    total += await propagateTemplates(key);
+  }
+  total += await propagateTemplates(eventKey);
+  return total;
+}
+
+export async function deleteTemplateAndCopies(templateActionId: string): Promise<void> {
+  const db = await getDb();
+  await db.run(
+    `DELETE FROM actions WHERE generated_from_action_id=$1`,
+    [templateActionId]
+  );
+  await db.run(
+    `DELETE FROM actions WHERE id=$1`,
+    [templateActionId]
+  );
+}
+
+export async function getSeriesTemplates(eventKey: string): Promise<TemplateAction[]> {
+  const db = await getDb();
+
+  const event = await db.get<{
+    event_key: string;
+    title: string;
+    recurring_event_id: string | null;
+    calendar_id: string;
+  }>(
+    `SELECT event_key, title, recurring_event_id, calendar_id FROM events WHERE event_key=$1`,
+    [eventKey]
+  );
+  if (!event) return [];
+
+  return findTemplatesForSeries(event);
+}
+
+async function findTemplatesForSeries(event: {
   event_key: string;
   title: string;
   recurring_event_id: string | null;
@@ -58,56 +112,53 @@ async function findTemplatesForEvent(event: {
   const templates: TemplateAction[] = [];
   const seenIds = new Set<string>();
 
-  if (event.recurring_event_id) {
-    const siblingKeys = await db.all<{ event_key: string }>(
-      `SELECT event_key FROM events
-       WHERE recurring_event_id=$1 AND event_key != $2`,
-      [event.recurring_event_id, event.event_key]
+  const allKeys = await getSiblingKeys(event);
+  allKeys.push(event.event_key);
+
+  if (allKeys.length > 0) {
+    const placeholders = allKeys.map((_, i) => `$${i + 1}`).join(",");
+    const rows = await db.all<TemplateAction>(
+      `SELECT id, title, priority, parent_id FROM actions
+       WHERE is_template=1 AND parent_type='event' AND parent_id IN (${placeholders})`,
+      allKeys
     );
-
-    if (siblingKeys.length > 0) {
-      const placeholders = siblingKeys.map((_, i) => `$${i + 1}`).join(",");
-      const keys = siblingKeys.map((r) => r.event_key);
-      const rows = await db.all<TemplateAction>(
-        `SELECT id, title, priority FROM actions
-         WHERE is_template=1 AND parent_type='event' AND parent_id IN (${placeholders})`,
-        keys
-      );
-      for (const r of rows) {
-        if (!seenIds.has(r.id)) {
-          seenIds.add(r.id);
-          templates.push(r);
-        }
-      }
-    }
-  }
-
-  if (!event.recurring_event_id) {
-    const normalizedTitle = (event.title || "").trim().toLowerCase();
-    if (normalizedTitle) {
-      const titleMatches = await db.all<{ event_key: string }>(
-        `SELECT event_key FROM events
-         WHERE LOWER(TRIM(title))=$1 AND event_key != $2 AND calendar_id=$3`,
-        [normalizedTitle, event.event_key, event.calendar_id]
-      );
-
-      if (titleMatches.length > 0) {
-        const placeholders = titleMatches.map((_, i) => `$${i + 1}`).join(",");
-        const keys = titleMatches.map((r) => r.event_key);
-        const rows = await db.all<TemplateAction>(
-          `SELECT id, title, priority FROM actions
-           WHERE is_template=1 AND parent_type='event' AND parent_id IN (${placeholders})`,
-          keys
-        );
-        for (const r of rows) {
-          if (!seenIds.has(r.id)) {
-            seenIds.add(r.id);
-            templates.push(r);
-          }
-        }
+    for (const r of rows) {
+      if (!seenIds.has(r.id)) {
+        seenIds.add(r.id);
+        templates.push(r);
       }
     }
   }
 
   return templates;
+}
+
+async function getSiblingKeys(event: {
+  event_key: string;
+  title: string;
+  recurring_event_id: string | null;
+  calendar_id: string;
+}): Promise<string[]> {
+  const db = await getDb();
+
+  if (event.recurring_event_id) {
+    const rows = await db.all<{ event_key: string }>(
+      `SELECT event_key FROM events
+       WHERE recurring_event_id=$1 AND event_key != $2`,
+      [event.recurring_event_id, event.event_key]
+    );
+    return rows.map((r) => r.event_key);
+  }
+
+  const normalizedTitle = (event.title || "").trim().toLowerCase();
+  if (normalizedTitle) {
+    const rows = await db.all<{ event_key: string }>(
+      `SELECT event_key FROM events
+       WHERE LOWER(TRIM(title))=$1 AND event_key != $2 AND calendar_id=$3`,
+      [normalizedTitle, event.event_key, event.calendar_id]
+    );
+    return rows.map((r) => r.event_key);
+  }
+
+  return [];
 }
