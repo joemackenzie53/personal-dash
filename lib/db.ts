@@ -141,13 +141,13 @@ async function initSchema(pool: pg.Pool) {
     const defaults: Array<[string, string | null]> = [
       ["unknown", null],
       ["holiday", "calendar:holidays"],
-      ["birthday", "\\bbirthday\\b|\\bbday\\b"],
-      ["anniversary", "\\banniversary\\b"],
-      ["christmas", "\\bchristmas\\b|\\bxmas\\b"],
-      ["easter", "\\beaster\\b"],
-      ["valentines", "\\bvalentine\\b"],
-      ["travel", "\\bflight\\b|\\bhotel\\b|\\btrain\\b|\\bairport\\b|\\bairbnb\\b"],
-      ["social", "\\bdinner\\b|\\blunch\\b|\\bdrinks\\b|\\bparty\\b"],
+      ["birthday", "birthday, bday"],
+      ["anniversary", "anniversary"],
+      ["christmas", "christmas, xmas"],
+      ["easter", "easter"],
+      ["valentines", "valentine"],
+      ["travel", "flight, hotel, train, airport, airbnb"],
+      ["social", "dinner, lunch, drinks, party"],
       ["admin", null],
     ];
     for (let i = 0; i < defaults.length; i++) {

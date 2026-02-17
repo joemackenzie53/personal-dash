@@ -18,6 +18,20 @@ async function loadRules(): Promise<CategoryRule[]> {
   return rows;
 }
 
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function keywordsToRegex(pattern: string): RegExp | null {
+  const keywords = pattern
+    .split(",")
+    .map((k) => k.trim())
+    .filter(Boolean);
+  if (keywords.length === 0) return null;
+  const parts = keywords.map((k) => `\\b${escapeRegex(k)}\\b`);
+  return new RegExp(parts.join("|"), "i");
+}
+
 export function invalidateClassifyCache() {
   cachedRules = null;
 }
@@ -36,7 +50,8 @@ export async function classifyEvent(opts: {
   for (const rule of rules) {
     if (!rule.pattern) continue;
 
-    if (rule.pattern === "calendar:holidays") {
+    const trimmedPattern = rule.pattern.trim().toLowerCase();
+    if (trimmedPattern === "calendar:holidays") {
       if (calIsHoliday || cal.includes("holidays") || cal.includes("holiday")) {
         return rule.name;
       }
@@ -44,8 +59,8 @@ export async function classifyEvent(opts: {
     }
 
     try {
-      const regex = new RegExp(rule.pattern, "i");
-      if (regex.test(title)) return rule.name;
+      const regex = keywordsToRegex(rule.pattern);
+      if (regex && regex.test(title)) return rule.name;
     } catch {
     }
   }

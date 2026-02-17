@@ -307,7 +307,7 @@ export default function SettingsPage() {
         <CardHeader>
           <div className="text-sm font-semibold">Event categories</div>
           <div className="text-xs text-neutral-600">
-            Manage event categories and their auto-match rules. Events with titles matching the keywords
+            Manage event categories and their auto-match keywords. Events with titles containing any of the keywords
             will be automatically categorised during sync. Use <code className="rounded bg-neutral-100 px-1">calendar:holidays</code> to match holiday calendars.
           </div>
         </CardHeader>
@@ -323,7 +323,7 @@ export default function SettingsPage() {
               <Input
                 value={newCatPattern}
                 onChange={(e) => setNewCatPattern(e.target.value)}
-                placeholder="Auto-match keywords (e.g. \bbirthday\b|\bbday\b)"
+                placeholder="Keywords (e.g. birthday, bday)"
                 onKeyDown={(e) => { if (e.key === "Enter") addCategory(); }}
                 className="text-xs"
               />
@@ -353,7 +353,7 @@ export default function SettingsPage() {
                           onChange={(e) => setEditCatPattern(e.target.value)}
                           onKeyDown={(e) => { if (e.key === "Escape") setEditingCat(null); }}
                           className="text-xs"
-                          placeholder="Auto-match keywords (leave empty for manual only)"
+                          placeholder="Keywords, comma-separated (leave empty for manual only)"
                         />
                       </div>
                       <div className="flex flex-col gap-1">
@@ -368,7 +368,7 @@ export default function SettingsPage() {
                       <span className="text-sm font-medium">{cat.name}</span>
                       {cat.pattern ? (
                         <div className="mt-0.5 truncate text-xs text-neutral-500" title={cat.pattern}>
-                          <span className="text-neutral-400">auto-match:</span> {cat.pattern}
+                          <span className="text-neutral-400">keywords:</span> {cat.pattern}
                         </div>
                       ) : (
                         <div className="mt-0.5 text-xs text-neutral-400">manual only</div>
