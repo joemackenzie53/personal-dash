@@ -101,6 +101,8 @@ CREATE TABLE IF NOT EXISTS actions (
   parent_id TEXT,
   reference_url TEXT,
   checklist TEXT NOT NULL DEFAULT '[]',
+  is_template INTEGER NOT NULL DEFAULT 0,
+  generated_from_action_id TEXT,
   created_at TEXT NOT NULL DEFAULT (NOW()::TEXT),
   updated_at TEXT NOT NULL DEFAULT (NOW()::TEXT)
 );
@@ -130,6 +132,10 @@ function getPool(): pg.Pool {
 async function initSchema(pool: pg.Pool) {
   if (initialized) return;
   await pool.query(SCHEMA_SQL);
+
+  await pool.query(`ALTER TABLE actions ADD COLUMN IF NOT EXISTS is_template INTEGER NOT NULL DEFAULT 0`);
+  await pool.query(`ALTER TABLE actions ADD COLUMN IF NOT EXISTS generated_from_action_id TEXT`);
+
   await pool.query(
     `INSERT INTO user_config (id, horizon_days, refresh_interval_minutes, selected_calendar_ids)
      VALUES (1, 182, 10, '[]')

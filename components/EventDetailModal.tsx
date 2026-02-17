@@ -31,6 +31,8 @@ type ActionRow = {
   status: string;
   priority: string;
   due_at: string | null;
+  is_template: number;
+  generated_from_action_id: string | null;
 };
 
 type CategoryRow = { id: string; name: string };
@@ -53,6 +55,7 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
   const [categories, setCategories] = React.useState<CategoryRow[]>([]);
   const [actions, setActions] = React.useState<ActionRow[]>([]);
   const [newActionTitle, setNewActionTitle] = React.useState("");
+  const [newActionIsTemplate, setNewActionIsTemplate] = React.useState(false);
   const [addingAction, setAddingAction] = React.useState(false);
 
   React.useEffect(() => {
@@ -62,6 +65,13 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
   }, []);
 
   async function loadActions(eventKey: string) {
+    try {
+      await api("/api/actions/propagate", {
+        method: "POST",
+        body: JSON.stringify({ eventKey }),
+      });
+    } catch {}
+
     try {
       const res = await api<{ actions: ActionRow[] }>(
         `/api/actions?status=all&parentType=event&parentId=${encodeURIComponent(eventKey)}`
@@ -80,6 +90,7 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
       setIsMajor(!!event.is_major);
       setErr(null);
       setNewActionTitle("");
+      setNewActionIsTemplate(false);
       loadActions(event.event_key);
     } else {
       setActions([]);
@@ -124,9 +135,11 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
           title: newActionTitle.trim(),
           parentType: "event",
           parentId: event.event_key,
+          isTemplate: newActionIsTemplate,
         }),
       });
       setNewActionTitle("");
+      setNewActionIsTemplate(false);
       await loadActions(event.event_key);
     } catch (e: any) {
       setErr(e?.message || "Failed to add action");
@@ -148,8 +161,107 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
     }
   }
 
+  async function toggleTemplate(action: ActionRow) {
+    try {
+      await api(`/api/actions/${action.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ isTemplate: action.is_template ? false : true }),
+      });
+      if (event) await loadActions(event.event_key);
+    } catch (e: any) {
+      setErr(e?.message || "Failed to update action");
+    }
+  }
+
+  async function deleteAction(actionId: string) {
+    try {
+      await api(`/api/actions/${actionId}`, { method: "DELETE" });
+      if (event) await loadActions(event.event_key);
+    } catch (e: any) {
+      setErr(e?.message || "Failed to delete action");
+    }
+  }
+
   const openActions = actions.filter((a) => a.status === "open");
   const doneActions = actions.filter((a) => a.status === "done");
+
+  const templateIcon = (
+    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="17 1 21 5 17 9" />
+      <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+      <polyline points="7 23 3 19 7 15" />
+      <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+    </svg>
+  );
+
+  function renderActionRow(a: ActionRow, isDone: boolean) {
+    const isGenerated = !!a.generated_from_action_id;
+    return (
+      <li key={a.id} className="group flex items-center gap-2 rounded px-1 py-1 hover:bg-neutral-50">
+        <button
+          onClick={() => toggleAction(a)}
+          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
+            isDone
+              ? "border-green-400 bg-green-100 text-green-600"
+              : "border-neutral-300 text-transparent hover:border-neutral-500"
+          }`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        </button>
+        <span className={`flex-1 text-sm ${isDone ? "text-neutral-400 line-through" : ""}`}>
+          {a.title}
+        </span>
+        {a.due_at && !isDone && <span className="shrink-0 text-xs text-neutral-500">{fmtDate(a.due_at)}</span>}
+        {a.is_template ? (
+          <button
+            onClick={() => toggleTemplate(a)}
+            className="shrink-0 rounded p-0.5 text-amber-500 hover:bg-amber-50"
+            title="Template action — will be copied to future instances. Click to make instance-only."
+          >
+            {templateIcon}
+          </button>
+        ) : isGenerated ? (
+          <span className="shrink-0 text-xs text-neutral-400" title="Auto-created from a template on another instance">
+            auto
+          </span>
+        ) : !isDone ? (
+          <button
+            onClick={() => toggleTemplate(a)}
+            className="shrink-0 rounded p-0.5 text-neutral-300 opacity-0 group-hover:opacity-100 hover:text-amber-500"
+            title="Make this a template — it will be copied to future instances"
+          >
+            {templateIcon}
+          </button>
+        ) : null}
+        {!isGenerated && !isDone && (
+          <button
+            onClick={() => deleteAction(a.id)}
+            className="shrink-0 rounded p-0.5 text-neutral-300 opacity-0 group-hover:opacity-100 hover:text-red-500"
+            title="Delete"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        )}
+        {isGenerated && !isDone && (
+          <button
+            onClick={() => deleteAction(a.id)}
+            className="shrink-0 rounded p-0.5 text-neutral-300 opacity-0 group-hover:opacity-100 hover:text-red-500"
+            title="Remove from this instance"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        )}
+      </li>
+    );
+  }
 
   return (
     <div
@@ -264,48 +376,40 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
             <div className="text-xs text-neutral-500">{openActions.length} open</div>
           </div>
 
-          <div className="mt-2 flex gap-2">
-            <Input
-              placeholder="Add an action for this event\u2026"
-              value={newActionTitle}
-              onChange={(e) => setNewActionTitle(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") addAction(); }}
-              className="text-sm"
-            />
-            <Button onClick={addAction} disabled={!newActionTitle.trim() || addingAction}>
-              {addingAction ? "Adding\u2026" : "Add"}
-            </Button>
+          {actions.some((a) => a.is_template) && (
+            <div className="mt-1.5 rounded-md bg-amber-50 px-2.5 py-1.5 text-xs text-amber-700">
+              Actions marked with the repeat icon are templates &mdash; they&apos;ll be automatically created on future instances of this event.
+            </div>
+          )}
+
+          <div className="mt-2 space-y-1.5">
+            <div className="flex gap-2">
+              <Input
+                placeholder="Add an action for this event\u2026"
+                value={newActionTitle}
+                onChange={(e) => setNewActionTitle(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") addAction(); }}
+                className="text-sm"
+              />
+              <Button onClick={addAction} disabled={!newActionTitle.trim() || addingAction}>
+                {addingAction ? "Adding\u2026" : "Add"}
+              </Button>
+            </div>
+            <label className="flex items-center gap-1.5 text-xs text-neutral-500 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={newActionIsTemplate}
+                onChange={(e) => setNewActionIsTemplate(e.target.checked)}
+                className="rounded"
+              />
+              Repeat on future instances
+            </label>
           </div>
 
           {actions.length > 0 && (
-            <ul className="mt-3 space-y-1">
-              {openActions.map((a) => (
-                <li key={a.id} className="flex items-center gap-2 rounded px-1 py-1 hover:bg-neutral-50">
-                  <button
-                    onClick={() => toggleAction(a)}
-                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded border border-neutral-300 text-transparent hover:border-neutral-500"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  </button>
-                  <span className="flex-1 text-sm">{a.title}</span>
-                  {a.due_at && <span className="shrink-0 text-xs text-neutral-500">{fmtDate(a.due_at)}</span>}
-                </li>
-              ))}
-              {doneActions.map((a) => (
-                <li key={a.id} className="flex items-center gap-2 rounded px-1 py-1 hover:bg-neutral-50">
-                  <button
-                    onClick={() => toggleAction(a)}
-                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded border border-green-400 bg-green-100 text-green-600"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  </button>
-                  <span className="flex-1 text-sm text-neutral-400 line-through">{a.title}</span>
-                </li>
-              ))}
+            <ul className="mt-3 space-y-0.5">
+              {openActions.map((a) => renderActionRow(a, false))}
+              {doneActions.map((a) => renderActionRow(a, true))}
             </ul>
           )}
         </div>

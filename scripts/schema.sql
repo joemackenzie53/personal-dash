@@ -93,6 +93,8 @@ CREATE TABLE IF NOT EXISTS actions (
   parent_id TEXT,
   reference_url TEXT,
   checklist TEXT NOT NULL DEFAULT '[]',
+  is_template INTEGER NOT NULL DEFAULT 0,
+  generated_from_action_id TEXT,
   created_at TEXT NOT NULL DEFAULT (NOW()::TEXT),
   updated_at TEXT NOT NULL DEFAULT (NOW()::TEXT)
 );

@@ -1,6 +1,7 @@
 import { getDb, jsonParse, jsonStringify } from "@/lib/db";
 import { getCalendarClient } from "@/lib/google";
 import { classifyEvent } from "@/lib/classify";
+import { propagateTemplates } from "@/lib/templates";
 
 function iso(d: Date) {
   return d.toISOString();
@@ -196,6 +197,9 @@ export async function syncAllSelected(): Promise<SyncResult> {
              VALUES ($1, $2, 0, NULL, NULL, 0, NOW()::TEXT)`,
             [eventKey, category]
           );
+          if (!deleted) {
+            try { await propagateTemplates(eventKey); } catch {}
+          }
         } else if (meta.locked === 0) {
           const category = await classifyEvent({ title: ev.summary || "", calendarIsHoliday, calendarSummary });
           await db.run(

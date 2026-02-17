@@ -4,7 +4,9 @@
 A personal dashboard built with Next.js 15, React 19, and PostgreSQL. It integrates with Google Calendar to show upcoming events, manage projects, and track action items.
 
 ## Recent Changes
-- 2026-02-17: Event category auto-classification rules are now database-driven. Categories table has a `pattern` column for regex keyword matching. The classify function (lib/classify.ts) loads rules from the database instead of hardcoded list. Settings page shows and allows editing of auto-match patterns per category. Deleting a category removes its auto-match rule.
+- 2026-02-17: Event action templates — actions on events can be marked as "template" so they automatically get copied to future instances of that event. Matching works by recurring_event_id (Google recurring series) or by title within the same calendar (for holiday events). Templates propagate during sync and when opening an event. Users can toggle template status, delete auto-generated actions per instance, and see visual indicators for template vs auto-generated actions.
+- 2026-02-17: Category auto-match patterns simplified to plain comma-separated keywords (e.g. "christmas, xmas") instead of raw regex. The system converts to regex internally.
+- 2026-02-17: Event category auto-classification rules are now database-driven. Categories table has a `pattern` column for keyword matching. The classify function (lib/classify.ts) loads rules from the database instead of hardcoded list. Settings page shows and allows editing of auto-match patterns per category. Deleting a category removes its auto-match rule.
 - 2026-02-17: Added "Actions needing triage" section to the Triage page — shows actions without a due date for quick assignment.
 - 2026-02-17: Due dates now shown on action rows in EventDetailModal and Projects page.
 - 2026-02-17: Event categories are now customizable via Settings page with full CRUD. EventDetailModal fetches categories dynamically from the API.
@@ -29,7 +31,7 @@ A personal dashboard built with Next.js 15, React 19, and PostgreSQL. It integra
 - `scripts/` — Database schema and initialization scripts
 
 ### Database
-PostgreSQL database accessed via DATABASE_URL environment variable. Schema defined in `scripts/schema.sql` and auto-initialized on first connection via `lib/db.ts`. Tables: user_config, oauth_tokens, calendars, calendar_sync_state, events, event_meta, projects, actions, categories. Categories have a `pattern` column for auto-classification regex rules used during sync.
+PostgreSQL database accessed via DATABASE_URL environment variable. Schema defined in `scripts/schema.sql` and auto-initialized on first connection via `lib/db.ts`. Tables: user_config, oauth_tokens, calendars, calendar_sync_state, events, event_meta, projects, actions, categories. Categories have a `pattern` column for auto-classification keyword rules used during sync. Actions have `is_template` and `generated_from_action_id` columns for template propagation across event instances.
 
 ### Environment Variables
 - `DATABASE_URL` — PostgreSQL connection string (auto-set by Replit)

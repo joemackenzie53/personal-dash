@@ -21,6 +21,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     if (Array.isArray(body?.checklist)) allowed.checklist = jsonStringify(body.checklist);
     if (body?.parentType !== undefined) allowed.parent_type = body.parentType || null;
     if (body?.parentId !== undefined) allowed.parent_id = body.parentId || null;
+    if (body?.isTemplate !== undefined) allowed.is_template = body.isTemplate ? 1 : 0;
 
     const keys = Object.keys(allowed);
     if (!keys.length) return bad(400, "No updatable fields provided");

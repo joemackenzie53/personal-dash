@@ -56,6 +56,8 @@ export async function POST(req: Request) {
     const db = await getDb();
     const id = newId("act");
 
+    const isTemplate = body?.isTemplate ? 1 : 0;
+
     const row = {
       id,
       title,
@@ -68,13 +70,14 @@ export async function POST(req: Request) {
       parent_type: typeof body?.parentType === "string" ? body.parentType : null,
       parent_id: typeof body?.parentId === "string" ? body.parentId : null,
       reference_url: typeof body?.referenceUrl === "string" ? body.referenceUrl : null,
-      checklist: jsonStringify(Array.isArray(body?.checklist) ? body.checklist : [])
+      checklist: jsonStringify(Array.isArray(body?.checklist) ? body.checklist : []),
+      is_template: isTemplate,
     };
 
     await db.run(
-      `INSERT INTO actions (id, title, status, priority, start_at, due_at, snooze_until, tags, parent_type, parent_id, reference_url, checklist, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW()::TEXT, NOW()::TEXT)`,
-      [row.id, row.title, row.status, row.priority, row.start_at, row.due_at, row.snooze_until, row.tags, row.parent_type, row.parent_id, row.reference_url, row.checklist]
+      `INSERT INTO actions (id, title, status, priority, start_at, due_at, snooze_until, tags, parent_type, parent_id, reference_url, checklist, is_template, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW()::TEXT, NOW()::TEXT)`,
+      [row.id, row.title, row.status, row.priority, row.start_at, row.due_at, row.snooze_until, row.tags, row.parent_type, row.parent_id, row.reference_url, row.checklist, row.is_template]
     );
 
     return ok({ ok: true, id });
