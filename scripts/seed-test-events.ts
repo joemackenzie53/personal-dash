@@ -22,6 +22,8 @@ function iso(d: Date) {
 
 async function clean() {
   console.log("Cleaning up test data...");
+  const r0 = await pool.query(`DELETE FROM actions WHERE parent_type='event' AND parent_id LIKE $1`, [`${PREFIX}%`]);
+  console.log(`  Deleted ${r0.rowCount} action rows`);
   const r1 = await pool.query(`DELETE FROM event_meta WHERE event_key LIKE $1`, [`${PREFIX}%`]);
   console.log(`  Deleted ${r1.rowCount} event_meta rows`);
   const r2 = await pool.query(`DELETE FROM events WHERE event_key LIKE $1`, [`${PREFIX}%`]);
@@ -131,6 +133,54 @@ async function seed() {
     location: "The Red Lion",
   });
 
+  events.push({
+    event_key: `${PREFIX}holiday-christmas-1`,
+    google_event_id: `${PREFIX}holiday-christmas-1`,
+    recurring_event_id: null,
+    title: "[TEST] Christmas Day",
+    start: "2026-12-25",
+    end: "2026-12-26",
+    all_day: 1,
+    description: "",
+    location: "",
+  });
+
+  events.push({
+    event_key: `${PREFIX}holiday-christmas-2`,
+    google_event_id: `${PREFIX}holiday-christmas-2`,
+    recurring_event_id: null,
+    title: "[TEST] Christmas Day",
+    start: "2027-12-25",
+    end: "2027-12-26",
+    all_day: 1,
+    description: "",
+    location: "",
+  });
+
+  events.push({
+    event_key: `${PREFIX}holiday-birthday-1`,
+    google_event_id: `${PREFIX}holiday-birthday-1`,
+    recurring_event_id: null,
+    title: "[TEST] Mum's Birthday",
+    start: addDays(now, 30).toISOString().slice(0, 10),
+    end: addDays(now, 31).toISOString().slice(0, 10),
+    all_day: 1,
+    description: "",
+    location: "",
+  });
+
+  events.push({
+    event_key: `${PREFIX}holiday-birthday-2`,
+    google_event_id: `${PREFIX}holiday-birthday-2`,
+    recurring_event_id: null,
+    title: "[TEST] Mum's Birthday",
+    start: addDays(now, 395).toISOString().slice(0, 10),
+    end: addDays(now, 396).toISOString().slice(0, 10),
+    all_day: 1,
+    description: "",
+    location: "",
+  });
+
   for (const e of events) {
     await pool.query(
       `INSERT INTO events (event_key, calendar_id, google_event_id, ical_uid, recurring_event_id, title, description, location, "start", "end", all_day, updated, status, deleted, raw_json)
@@ -155,9 +205,11 @@ async function seed() {
   }
 
   console.log(`  Inserted ${events.length} test events`);
-  console.log(`  - 4 standalone events (no recurring ID)`);
+  console.log(`  - 4 standalone events`);
   console.log(`  - 8 weekly standup instances (recurring)`);
   console.log(`  - 6 piano lesson instances (recurring)`);
+  console.log(`  - 2 Christmas Day instances (same-title, for template testing)`);
+  console.log(`  - 2 Mum's Birthday instances (same-title, for template testing)`);
   console.log("Done. Run with --clean to remove all test data.");
 }
 
