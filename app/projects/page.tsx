@@ -32,6 +32,7 @@ type ActionRow = {
 function ProjectActions({ projectId }: { projectId: string }) {
   const [actions, setActions] = React.useState<ActionRow[]>([]);
   const [newTitle, setNewTitle] = React.useState("");
+  const [newDueAt, setNewDueAt] = React.useState("");
   const [adding, setAdding] = React.useState(false);
   const [expanded, setExpanded] = React.useState(false);
 
@@ -60,9 +61,11 @@ function ProjectActions({ projectId }: { projectId: string }) {
           title: newTitle.trim(),
           parentType: "project",
           parentId: projectId,
+          dueAt: newDueAt ? new Date(newDueAt).toISOString() : null,
         }),
       });
       setNewTitle("");
+      setNewDueAt("");
       await loadActions();
     } catch {
     } finally {
@@ -122,6 +125,12 @@ function ProjectActions({ projectId }: { projectId: string }) {
               onChange={(e) => setNewTitle(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") addAction(); }}
               className="text-sm"
+            />
+            <Input
+              type="date"
+              value={newDueAt}
+              onChange={(e) => setNewDueAt(e.target.value)}
+              className="w-36 text-sm"
             />
             <Button onClick={addAction} disabled={!newTitle.trim() || adding}>
               {adding ? "Adding..." : "Add"}

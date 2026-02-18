@@ -59,6 +59,7 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
   const [newTemplateTitle, setNewTemplateTitle] = React.useState("");
   const [newTemplateDaysBefore, setNewTemplateDaysBefore] = React.useState<string>("");
   const [newInstanceTitle, setNewInstanceTitle] = React.useState("");
+  const [newInstanceDueAt, setNewInstanceDueAt] = React.useState("");
   const [addingAction, setAddingAction] = React.useState(false);
   const [actionsTab, setActionsTab] = React.useState<"instance" | "recurring">("instance");
 
@@ -103,6 +104,7 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
       setNewTemplateTitle("");
       setNewTemplateDaysBefore("");
       setNewInstanceTitle("");
+      setNewInstanceDueAt("");
       setActionsTab("instance");
       loadActions(event.event_key);
     } else {
@@ -155,6 +157,9 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
           payload.dueDaysBefore = days;
         }
       }
+      if (!isTemplate && newInstanceDueAt) {
+        payload.dueAt = new Date(newInstanceDueAt).toISOString();
+      }
       await api("/api/actions", {
         method: "POST",
         body: JSON.stringify(payload),
@@ -164,6 +169,7 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
         setNewTemplateDaysBefore("");
       } else {
         setNewInstanceTitle("");
+        setNewInstanceDueAt("");
       }
       await loadActions(event.event_key);
     } catch (e: any) {
@@ -423,6 +429,12 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
                   onChange={(e) => setNewInstanceTitle(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") addAction(newInstanceTitle, false); }}
                   className="text-sm"
+                />
+                <Input
+                  type="date"
+                  value={newInstanceDueAt}
+                  onChange={(e) => setNewInstanceDueAt(e.target.value)}
+                  className="w-36 text-sm"
                 />
                 <Button onClick={() => addAction(newInstanceTitle, false)} disabled={!newInstanceTitle.trim() || addingAction}>
                   Add

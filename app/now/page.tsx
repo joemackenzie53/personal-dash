@@ -303,7 +303,7 @@ export default function NowPage() {
               <section className="space-y-2">
                 <div className="text-xs font-semibold uppercase tracking-wide text-neutral-600">Unscheduled</div>
                 <ul className="space-y-2">
-                  {unscheduled.slice(0, 8).map((a) => (
+                  {unscheduled.map((a) => (
                     <li key={a.id} className="cursor-pointer rounded-lg border border-neutral-200 px-3 py-2 hover:bg-neutral-50" onClick={() => setSelectedAction(a)}>
                       <div>
                         <div className="text-sm font-medium">{a.title}</div>
