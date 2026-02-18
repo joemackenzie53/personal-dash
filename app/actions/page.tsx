@@ -125,6 +125,17 @@ export default function ActionsPage() {
     return null;
   }
 
+  async function toggleAction(e: React.MouseEvent, actionId: string, newStatus: string) {
+    e.stopPropagation();
+    try {
+      await api(`/api/actions/${actionId}`, {
+        method: "PUT",
+        body: JSON.stringify({ status: newStatus }),
+      });
+      await load();
+    } catch {}
+  }
+
   const open = actions.filter((a) => a.status === "open");
   const done = actions.filter((a) => a.status === "done");
 
@@ -135,18 +146,30 @@ export default function ActionsPage() {
   const unscheduled = open.filter((a) => !a.due_at);
 
   function renderActionRow(a: ActionRow, tone?: "red" | "amber") {
+    const isDone = a.status === "done";
     return (
       <li
         key={a.id}
         className="cursor-pointer rounded-lg border border-neutral-200 px-3 py-2 hover:bg-neutral-50"
         onClick={() => setSelectedAction(a)}
       >
-        <div className="flex items-start justify-between gap-2">
+        <div className="flex items-start gap-2">
+          <button
+            onClick={(e) => toggleAction(e, a.id, isDone ? "open" : "done")}
+            className="-ml-1 flex-shrink-0 p-1.5 rounded-full hover:bg-green-50 transition-colors"
+            aria-label={isDone ? "Reopen action" : "Complete action"}
+          >
+            <span className={`flex items-center justify-center h-[18px] w-[18px] rounded-full border-2 transition-colors ${isDone ? "border-green-500 bg-green-500" : "border-neutral-400 hover:border-green-500"}`}>
+              {isDone && (
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              )}
+            </span>
+          </button>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">{a.title}</span>
-              {a.priority === "high" && <Badge tone="red">high</Badge>}
-              {a.priority === "low" && <Badge tone="neutral">low</Badge>}
+              <span className={`text-sm font-medium ${isDone ? "line-through text-neutral-400" : ""}`}>{a.title}</span>
+              {a.priority === "high" && !isDone && <Badge tone="red">high</Badge>}
+              {a.priority === "low" && !isDone && <Badge tone="neutral">low</Badge>}
             </div>
             <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-neutral-600">
               {a.due_at && <span>{fmtDate(a.due_at)}</span>}
@@ -297,26 +320,7 @@ export default function ActionsPage() {
           <CardContent>
             {done.length === 0 && <div className="text-sm text-neutral-500">No completed actions.</div>}
             <ul className="space-y-2">
-              {done.map((a) => (
-                <li
-                  key={a.id}
-                  className="cursor-pointer rounded-lg border border-neutral-200 px-3 py-2 hover:bg-neutral-50"
-                  onClick={() => setSelectedAction(a)}
-                >
-                  <div className="flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-green-500">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                    <span className="text-sm text-neutral-500 line-through">{a.title}</span>
-                    {a.due_at && <span className="text-xs text-neutral-400">{fmtDate(a.due_at)}</span>}
-                    {parentLabel(a) && (
-                      <span className="inline-flex items-center gap-1 rounded bg-neutral-200/60 px-1.5 py-0.5 text-xs text-neutral-500">
-                        {parentLabel(a)}
-                      </span>
-                    )}
-                  </div>
-                </li>
-              ))}
+              {done.map((a) => renderActionRow(a))}
             </ul>
           </CardContent>
         )}

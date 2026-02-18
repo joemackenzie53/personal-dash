@@ -137,6 +137,17 @@ export default function NowPage() {
     }
   }
 
+  async function toggleAction(e: React.MouseEvent, actionId: string) {
+    e.stopPropagation();
+    try {
+      await api(`/api/actions/${actionId}`, {
+        method: "PUT",
+        body: JSON.stringify({ status: "done" }),
+      });
+      await load();
+    } catch {}
+  }
+
   const overdue = actions.filter((a) => a.due_at && new Date(a.due_at) < new Date());
   const dueSoon = actions.filter((a) => a.due_at && new Date(a.due_at) >= new Date() && new Date(a.due_at) <= addDays(new Date(), 3));
   const unscheduled = actions.filter((a) => !a.due_at);
@@ -243,8 +254,9 @@ export default function NowPage() {
                 <ul className="space-y-2">
                   {overdue.map((a) => (
                     <li key={a.id} className="cursor-pointer rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 hover:bg-neutral-100" onClick={() => setSelectedAction(a)}>
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
+                      <div className="flex items-start gap-2">
+                        <button onClick={(e) => toggleAction(e, a.id)} className="-ml-1 flex-shrink-0 p-1.5 rounded-full hover:bg-green-50 transition-colors" aria-label="Complete action"><span className="block h-[18px] w-[18px] rounded-full border-2 border-neutral-400 hover:border-green-500 transition-colors" /></button>
+                        <div className="min-w-0 flex-1">
                           <div className="text-sm font-medium">{a.title}</div>
                           <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-neutral-600">
                             {a.due_at && <span>{fmtDate(a.due_at)}</span>}
@@ -274,8 +286,9 @@ export default function NowPage() {
                 <ul className="space-y-2">
                   {dueSoon.map((a) => (
                     <li key={a.id} className="cursor-pointer rounded-lg border border-neutral-200 px-3 py-2 hover:bg-neutral-50" onClick={() => setSelectedAction(a)}>
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
+                      <div className="flex items-start gap-2">
+                        <button onClick={(e) => toggleAction(e, a.id)} className="-ml-1 flex-shrink-0 p-1.5 rounded-full hover:bg-green-50 transition-colors" aria-label="Complete action"><span className="block h-[18px] w-[18px] rounded-full border-2 border-neutral-400 hover:border-green-500 transition-colors" /></button>
+                        <div className="min-w-0 flex-1">
                           <div className="text-sm font-medium">{a.title}</div>
                           <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-neutral-600">
                             {a.due_at && <span>{fmtDate(a.due_at)}</span>}
@@ -305,20 +318,23 @@ export default function NowPage() {
                 <ul className="space-y-2">
                   {unscheduled.map((a) => (
                     <li key={a.id} className="cursor-pointer rounded-lg border border-neutral-200 px-3 py-2 hover:bg-neutral-50" onClick={() => setSelectedAction(a)}>
-                      <div>
-                        <div className="text-sm font-medium">{a.title}</div>
-                        {parentLabel(a) && (
-                          <div className="mt-0.5 text-xs">
-                            <span className="inline-flex items-center gap-1 rounded bg-neutral-200/60 px-1.5 py-0.5 text-neutral-600">
-                              {a.parent_type === "project" ? (
-                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-                              ) : (
-                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                              )}
-                              {parentLabel(a)}
-                            </span>
-                          </div>
-                        )}
+                      <div className="flex items-start gap-2">
+                        <button onClick={(e) => toggleAction(e, a.id)} className="-ml-1 flex-shrink-0 p-1.5 rounded-full hover:bg-green-50 transition-colors" aria-label="Complete action"><span className="block h-[18px] w-[18px] rounded-full border-2 border-neutral-400 hover:border-green-500 transition-colors" /></button>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-medium">{a.title}</div>
+                          {parentLabel(a) && (
+                            <div className="mt-0.5 text-xs">
+                              <span className="inline-flex items-center gap-1 rounded bg-neutral-200/60 px-1.5 py-0.5 text-neutral-600">
+                                {a.parent_type === "project" ? (
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                                ) : (
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                )}
+                                {parentLabel(a)}
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </li>
                   ))}
