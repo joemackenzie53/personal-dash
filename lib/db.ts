@@ -144,24 +144,34 @@ async function initSchema(pool: pg.Pool) {
      ON CONFLICT DO NOTHING`
   );
 
+  const defaults: Array<[string, string | null]> = [
+    ["unknown", null],
+    ["holiday", "calendar:holidays"],
+    ["birthday", "birthday, bday"],
+    ["anniversary", "anniversary"],
+    ["christmas", "christmas, xmas"],
+    ["easter", "easter"],
+    ["valentines", "valentine"],
+    ["travel", "flight, hotel, train, airport, airbnb"],
+    ["social", "dinner, lunch, drinks, party"],
+    ["admin", null],
+  ];
+
   const catCount = await pool.query("SELECT COUNT(*) as cnt FROM categories");
   if (parseInt(catCount.rows[0].cnt) === 0) {
-    const defaults: Array<[string, string | null]> = [
-      ["unknown", null],
-      ["holiday", "calendar:holidays"],
-      ["birthday", "birthday, bday"],
-      ["anniversary", "anniversary"],
-      ["christmas", "christmas, xmas"],
-      ["easter", "easter"],
-      ["valentines", "valentine"],
-      ["travel", "flight, hotel, train, airport, airbnb"],
-      ["social", "dinner, lunch, drinks, party"],
-      ["admin", null],
-    ];
     for (let i = 0; i < defaults.length; i++) {
       await pool.query(
         "INSERT INTO categories (id, name, pattern, sort_order) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING",
         [defaults[i][0], defaults[i][0], defaults[i][1], i]
+      );
+    }
+  }
+
+  for (const [name, pattern] of defaults) {
+    if (pattern) {
+      await pool.query(
+        "UPDATE categories SET pattern = $1 WHERE name = $2 AND (pattern IS NULL OR pattern = '')",
+        [pattern, name]
       );
     }
   }
