@@ -241,7 +241,7 @@ export default function NowPage() {
               <section className="space-y-2">
                 <div className="text-xs font-semibold uppercase tracking-wide text-neutral-600">Overdue</div>
                 <ul className="space-y-2">
-                  {overdue.slice(0, 8).map((a) => (
+                  {overdue.map((a) => (
                     <li key={a.id} className="cursor-pointer rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 hover:bg-neutral-100" onClick={() => setSelectedAction(a)}>
                       <div className="flex items-start justify-between gap-2">
                         <div>
@@ -272,7 +272,7 @@ export default function NowPage() {
               <section className="space-y-2">
                 <div className="text-xs font-semibold uppercase tracking-wide text-neutral-600">Due soon</div>
                 <ul className="space-y-2">
-                  {dueSoon.slice(0, 8).map((a) => (
+                  {dueSoon.map((a) => (
                     <li key={a.id} className="cursor-pointer rounded-lg border border-neutral-200 px-3 py-2 hover:bg-neutral-50" onClick={() => setSelectedAction(a)}>
                       <div className="flex items-start justify-between gap-2">
                         <div>
