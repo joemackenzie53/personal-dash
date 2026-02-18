@@ -24,12 +24,24 @@ export async function GET(req: Request) {
       key_doc_urls: jsonParse(r.key_doc_urls, [])
     }));
 
-    const counts = await db.all<{ project_id: string; open_actions: number }>(
-      `SELECT parent_id as project_id, COUNT(*) as open_actions FROM actions WHERE status='open' AND parent_type='project' AND (is_template = 0 OR is_template IS NULL) GROUP BY parent_id`
+    const counts = await db.all<{ project_id: string; action_total: number; action_done: number }>(
+      `SELECT parent_id as project_id,
+        COUNT(*)::int as action_total,
+        COUNT(*) FILTER (WHERE status = 'done')::int as action_done
+      FROM actions
+      WHERE parent_type='project' AND (is_template = 0 OR is_template IS NULL)
+      GROUP BY parent_id`
     ).catch(() => [] as any);
 
-    const byId = new Map<string, number>(counts.map((c: any) => [c.project_id, c.open_actions]));
-    const withCounts = mapped.map((p: any) => ({ ...p, openActions: byId.get(p.id) || 0 }));
+    const byId = new Map<string, { total: number; done: number }>(
+      counts.map((c: any) => [c.project_id, { total: c.action_total, done: c.action_done }])
+    );
+    const withCounts = mapped.map((p: any) => ({
+      ...p,
+      openActions: (byId.get(p.id)?.total || 0) - (byId.get(p.id)?.done || 0),
+      action_total: byId.get(p.id)?.total || 0,
+      action_done: byId.get(p.id)?.done || 0,
+    }));
 
     return ok({ projects: withCounts });
   } catch (e) {

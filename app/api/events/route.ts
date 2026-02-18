@@ -32,9 +32,19 @@ export async function GET(req: Request) {
         e.event_key, e.calendar_id, e.google_event_id, e.recurring_event_id,
         e.title, e.description, e.location,
         e."start", e."end", e.all_day, e.status, e.deleted,
-        m.category, m.is_major, m.project_id, m.notes_url, m.locked
+        m.category, m.is_major, m.project_id, m.notes_url, m.locked,
+        COALESCE(ac.action_total, 0)::int AS action_total,
+        COALESCE(ac.action_done, 0)::int AS action_done
       FROM events e
       LEFT JOIN event_meta m ON m.event_key = e.event_key
+      LEFT JOIN (
+        SELECT parent_id,
+          COUNT(*)::int AS action_total,
+          COUNT(*) FILTER (WHERE status = 'done')::int AS action_done
+        FROM actions
+        WHERE parent_type = 'event' AND (is_template = 0 OR is_template IS NULL)
+        GROUP BY parent_id
+      ) ac ON ac.parent_id = e.event_key
       ${where.length ? "WHERE " + where.join(" AND ") : ""}
       ORDER BY e."start" ASC
       LIMIT 2000

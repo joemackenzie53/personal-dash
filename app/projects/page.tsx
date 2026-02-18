@@ -19,6 +19,8 @@ type Project = {
   description: string | null;
   drive_folder_url: string | null;
   openActions?: number;
+  action_total: number;
+  action_done: number;
 };
 
 type ActionRow = {
@@ -293,7 +295,12 @@ export default function ProjectsPage() {
                   <div className="text-sm font-semibold">{p.name}</div>
                   <div className="mt-1 flex flex-wrap gap-2">
                     <Badge>{p.priority}</Badge>
-                    {typeof p.openActions === "number" ? <Badge tone="blue">{p.openActions} open actions</Badge> : null}
+                    {p.action_total > 0 && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-medium text-neutral-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                        {p.action_done}/{p.action_total}
+                      </span>
+                    )}
                   </div>
                 </div>
                 {p.drive_folder_url ? (
