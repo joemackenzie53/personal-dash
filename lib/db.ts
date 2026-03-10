@@ -104,6 +104,7 @@ CREATE TABLE IF NOT EXISTS actions (
   is_template INTEGER NOT NULL DEFAULT 0,
   generated_from_action_id TEXT,
   due_days_before INTEGER,
+  description TEXT,
   created_at TEXT NOT NULL DEFAULT (NOW()::TEXT),
   updated_at TEXT NOT NULL DEFAULT (NOW()::TEXT)
 );
@@ -137,6 +138,7 @@ async function initSchema(pool: pg.Pool) {
   await pool.query(`ALTER TABLE actions ADD COLUMN IF NOT EXISTS is_template INTEGER NOT NULL DEFAULT 0`);
   await pool.query(`ALTER TABLE actions ADD COLUMN IF NOT EXISTS generated_from_action_id TEXT`);
   await pool.query(`ALTER TABLE actions ADD COLUMN IF NOT EXISTS due_days_before INTEGER`);
+  await pool.query(`ALTER TABLE actions ADD COLUMN IF NOT EXISTS description TEXT`);
 
   await pool.query(
     `INSERT INTO user_config (id, horizon_days, refresh_interval_minutes, selected_calendar_ids)

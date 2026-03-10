@@ -4,6 +4,7 @@ import { api } from "@/lib/client";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import { Textarea } from "@/components/ui/Textarea";
 
 type ActionRow = {
   id: string;
@@ -11,6 +12,7 @@ type ActionRow = {
   status: string;
   priority: string;
   due_at: string | null;
+  description: string | null;
   parent_type: string | null;
   parent_id: string | null;
   parent_name: string | null;
@@ -37,6 +39,7 @@ function toDateInput(iso: string | null): string {
 
 export function ActionDetailModal({ action, projects, events, onClose, onSaved }: Props) {
   const [title, setTitle] = React.useState("");
+  const [description, setDescription] = React.useState("");
   const [status, setStatus] = React.useState("open");
   const [priority, setPriority] = React.useState("med");
   const [dueAt, setDueAt] = React.useState("");
@@ -49,6 +52,7 @@ export function ActionDetailModal({ action, projects, events, onClose, onSaved }
   React.useEffect(() => {
     if (action) {
       setTitle(action.title);
+      setDescription(action.description || "");
       setStatus(action.status);
       setPriority(action.priority || "med");
       setDueAt(toDateInput(action.due_at));
@@ -80,6 +84,7 @@ export function ActionDetailModal({ action, projects, events, onClose, onSaved }
         method: "PUT",
         body: JSON.stringify({
           title: title.trim(),
+          description: description.trim() || null,
           status,
           priority,
           dueAt: dueAt ? new Date(dueAt).toISOString() : null,
@@ -144,6 +149,16 @@ export function ActionDetailModal({ action, projects, events, onClose, onSaved }
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Action title"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <div className="text-xs font-medium text-neutral-600">Description</div>
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Add more details..."
+              rows={3}
             />
           </div>
 

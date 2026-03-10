@@ -30,6 +30,7 @@ type ActionRow = {
   status: string;
   priority: string;
   due_at: string | null;
+  description: string | null;
 };
 
 function ProjectActions({ projectId, onSelectAction, reloadKey }: { projectId: string; onSelectAction: (a: ActionRow) => void; reloadKey: number }) {
@@ -187,6 +188,7 @@ type ActionDetailRow = {
   status: string;
   priority: string;
   due_at: string | null;
+  description: string | null;
   parent_type: string | null;
   parent_id: string | null;
   parent_name: string | null;
@@ -327,7 +329,7 @@ export default function ProjectsPage() {
             <CardContent className="space-y-3">
               {p.description ? <div className="text-sm text-neutral-700">{p.description}</div> : <div className="text-sm text-neutral-500">No description.</div>}
               <ProjectActions projectId={p.id} reloadKey={actionReloadKey} onSelectAction={(a) => {
-                setSelectedAction({ ...a, parent_type: "project", parent_id: p.id, parent_name: p.name });
+                setSelectedAction({ ...a, description: a.description || null, parent_type: "project", parent_id: p.id, parent_name: p.name });
               }} />
             </CardContent>
           </Card>

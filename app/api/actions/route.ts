@@ -84,12 +84,13 @@ export async function POST(req: Request) {
       checklist: jsonStringify(Array.isArray(body?.checklist) ? body.checklist : []),
       is_template: isTemplate,
       due_days_before: dueDaysBefore,
+      description: typeof body?.description === "string" ? body.description.trim() || null : null,
     };
 
     await db.run(
-      `INSERT INTO actions (id, title, status, priority, start_at, due_at, snooze_until, tags, parent_type, parent_id, reference_url, checklist, is_template, due_days_before, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW()::TEXT, NOW()::TEXT)`,
-      [row.id, row.title, row.status, row.priority, row.start_at, row.due_at, row.snooze_until, row.tags, row.parent_type, row.parent_id, row.reference_url, row.checklist, row.is_template, row.due_days_before]
+      `INSERT INTO actions (id, title, status, priority, start_at, due_at, snooze_until, tags, parent_type, parent_id, reference_url, checklist, is_template, due_days_before, description, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW()::TEXT, NOW()::TEXT)`,
+      [row.id, row.title, row.status, row.priority, row.start_at, row.due_at, row.snooze_until, row.tags, row.parent_type, row.parent_id, row.reference_url, row.checklist, row.is_template, row.due_days_before, row.description]
     );
 
     if (isTemplate && row.parent_type === "event" && row.parent_id) {

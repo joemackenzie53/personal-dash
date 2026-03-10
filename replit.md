@@ -32,7 +32,7 @@ A personal dashboard built with Next.js 15, React 19, and PostgreSQL. It integra
 - `scripts/` — Database schema and initialization scripts
 
 ### Database
-PostgreSQL database accessed via DATABASE_URL environment variable. Schema defined in `scripts/schema.sql` and auto-initialized on first connection via `lib/db.ts`. Tables: user_config, oauth_tokens, calendars, calendar_sync_state, events, event_meta, projects, actions, categories. Categories have a `pattern` column for auto-classification keyword rules used during sync. Actions have `is_template`, `generated_from_action_id`, and `due_days_before` columns for template propagation across event instances with relative due date computation.
+PostgreSQL database accessed via DATABASE_URL environment variable. Schema defined in `scripts/schema.sql` and auto-initialized on first connection via `lib/db.ts`. Tables: user_config, oauth_tokens, calendars, calendar_sync_state, events, event_meta, projects, actions, categories. Categories have a `pattern` column for auto-classification keyword rules used during sync. Actions have `is_template`, `generated_from_action_id`, `due_days_before`, and `description` columns. The `description` field allows users to add extra details to actions (visible only in the edit modal). Template propagation copies descriptions across event instances.
 
 ### Environment Variables
 - `DATABASE_URL` — PostgreSQL connection string (auto-set by Replit)

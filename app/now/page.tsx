@@ -47,6 +47,7 @@ type ActionRow = {
   status: string;
   priority: string;
   due_at: string | null;
+  description: string | null;
   parent_type: string | null;
   parent_id: string | null;
   parent_name: string | null;

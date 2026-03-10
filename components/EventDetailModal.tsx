@@ -32,6 +32,7 @@ type ActionRow = {
   status: string;
   priority: string;
   due_at: string | null;
+  description: string | null;
   is_template: number;
   generated_from_action_id: string | null;
   due_days_before: number | null;
@@ -58,7 +59,8 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
   const [actions, setActions] = React.useState<ActionRow[]>([]);
   const [selectedAction, setSelectedAction] = React.useState<{
     id: string; title: string; status: string; priority: string;
-    due_at: string | null; parent_type: string | null; parent_id: string | null; parent_name: string | null;
+    due_at: string | null; description: string | null;
+    parent_type: string | null; parent_id: string | null; parent_name: string | null;
   } | null>(null);
   const [seriesTemplates, setSeriesTemplates] = React.useState<ActionRow[]>([]);
   const [newTemplateTitle, setNewTemplateTitle] = React.useState("");
@@ -260,7 +262,8 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
         className="group flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-neutral-50"
         onClick={() => setSelectedAction({
           id: a.id, title: a.title, status: a.status, priority: a.priority,
-          due_at: a.due_at, parent_type: "event", parent_id: event?.event_key || null,
+          due_at: a.due_at, description: a.description || null,
+          parent_type: "event", parent_id: event?.event_key || null,
           parent_name: event?.title || null,
         })}
       >
