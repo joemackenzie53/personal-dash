@@ -10,6 +10,11 @@
     "db:init": "node scripts/db-init.mjs"
   },
   "dependencies": {
+    "@tiptap/extension-task-item": "^3.20.1",
+    "@tiptap/extension-task-list": "^3.20.1",
+    "@tiptap/pm": "^3.20.1",
+    "@tiptap/react": "^3.20.1",
+    "@tiptap/starter-kit": "^3.20.1",
     "@types/pg": "^8.16.0",
     "clsx": "^2.1.1",
     "googleapis": "^143.0.0",

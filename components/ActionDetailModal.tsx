@@ -4,7 +4,7 @@ import { api } from "@/lib/client";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import { Textarea } from "@/components/ui/Textarea";
+import { RichTextEditor } from "@/components/RichTextEditor";
 
 type ActionRow = {
   id: string;
@@ -154,11 +154,10 @@ export function ActionDetailModal({ action, projects, events, onClose, onSaved }
 
           <div className="space-y-1">
             <div className="text-xs font-medium text-neutral-600">Description</div>
-            <Textarea
+            <RichTextEditor
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={setDescription}
               placeholder="Add more details..."
-              rows={3}
             />
           </div>
 

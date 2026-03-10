@@ -13,3 +13,53 @@ html, body {
 * {
   -webkit-tap-highlight-color: transparent;
 }
+
+.ProseMirror ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+
+.ProseMirror ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+
+.ProseMirror ul[data-type="taskList"] li label {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+
+.ProseMirror ul[data-type="taskList"] li label input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  accent-color: #22c55e;
+}
+
+.ProseMirror ul[data-type="taskList"] li[data-checked="true"] > div > p {
+  text-decoration: line-through;
+  color: #a3a3a3;
+}
+
+.ProseMirror ul:not([data-type="taskList"]) {
+  list-style-type: disc;
+  padding-left: 1.25rem;
+}
+
+.ProseMirror ol {
+  list-style-type: decimal;
+  padding-left: 1.25rem;
+}
+
+.ProseMirror li p {
+  margin: 0;
+}
+
+.ProseMirror p {
+  margin: 0.15rem 0;
+}
+
+.ProseMirror:focus {
+  outline: none;
+}

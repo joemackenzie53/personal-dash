@@ -4,6 +4,7 @@
 A personal dashboard built with Next.js 15, React 19, and PostgreSQL. It integrates with Google Calendar to show upcoming events, manage projects, and track action items.
 
 ## Recent Changes
+- 2026-03-10: Action description field upgraded to rich text editor (Tiptap/ProseMirror). Supports bullet lists, numbered lists, and checkbox lists — all mixable within one description. Content stored as HTML in existing description TEXT column. RichTextEditor component in `components/RichTextEditor.tsx`, styles in `globals.css`.
 - 2026-02-17: Recurring action templates now support relative due dates via `due_days_before` column. When adding a recurring action, users can set "X days before" and the system computes actual due dates on each instance based on the event's start date. Shown as badges on template rows ("30d before", "day of").
 - 2026-02-17: Event action templates — actions on events can be marked as "template" so they automatically get copied to future instances of that event. Matching works by recurring_event_id (Google recurring series) or by title within the same calendar (for holiday events). Templates propagate during sync and when opening an event. Users can toggle template status, delete auto-generated actions per instance, and see visual indicators for template vs auto-generated actions.
 - 2026-02-17: Category auto-match patterns simplified to plain comma-separated keywords (e.g. "christmas, xmas") instead of raw regex. The system converts to regex internally.
