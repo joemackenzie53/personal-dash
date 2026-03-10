@@ -9,6 +9,7 @@ import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { Notice } from "@/components/Notice";
 import { Badge } from "@/components/ui/Badge";
+import { ActionDetailModal } from "@/components/ActionDetailModal";
 
 type Project = {
   id: string;
@@ -31,7 +32,7 @@ type ActionRow = {
   due_at: string | null;
 };
 
-function ProjectActions({ projectId }: { projectId: string }) {
+function ProjectActions({ projectId, onSelectAction, reloadKey }: { projectId: string; onSelectAction: (a: ActionRow) => void; reloadKey: number }) {
   const [actions, setActions] = React.useState<ActionRow[]>([]);
   const [newTitle, setNewTitle] = React.useState("");
   const [newDueAt, setNewDueAt] = React.useState("");
@@ -51,7 +52,7 @@ function ProjectActions({ projectId }: { projectId: string }) {
 
   React.useEffect(() => {
     loadActions();
-  }, [projectId]);
+  }, [projectId, reloadKey]);
 
   async function addAction() {
     if (!newTitle.trim()) return;
@@ -142,9 +143,9 @@ function ProjectActions({ projectId }: { projectId: string }) {
           {actions.length > 0 && (
             <ul className="mt-2 space-y-1">
               {openActions.map((a) => (
-                <li key={a.id} className="flex items-center gap-2 rounded px-1 py-1 hover:bg-neutral-50">
+                <li key={a.id} className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-neutral-50" onClick={() => onSelectAction(a)}>
                   <button
-                    onClick={() => toggleAction(a)}
+                    onClick={(e) => { e.stopPropagation(); toggleAction(a); }}
                     className="flex h-5 w-5 shrink-0 items-center justify-center rounded border border-neutral-300 text-transparent hover:border-neutral-500"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -156,9 +157,9 @@ function ProjectActions({ projectId }: { projectId: string }) {
                 </li>
               ))}
               {doneActions.map((a) => (
-                <li key={a.id} className="flex items-center gap-2 rounded px-1 py-1 hover:bg-neutral-50">
+                <li key={a.id} className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-neutral-50" onClick={() => onSelectAction(a)}>
                   <button
-                    onClick={() => toggleAction(a)}
+                    onClick={(e) => { e.stopPropagation(); toggleAction(a); }}
                     className="flex h-5 w-5 shrink-0 items-center justify-center rounded border border-green-400 bg-green-100 text-green-600"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -180,10 +181,23 @@ function ProjectActions({ projectId }: { projectId: string }) {
   );
 }
 
+type ActionDetailRow = {
+  id: string;
+  title: string;
+  status: string;
+  priority: string;
+  due_at: string | null;
+  parent_type: string | null;
+  parent_id: string | null;
+  parent_name: string | null;
+};
+
 export default function ProjectsPage() {
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [err, setErr] = React.useState<string | null>(null);
+  const [selectedAction, setSelectedAction] = React.useState<ActionDetailRow | null>(null);
+  const [actionReloadKey, setActionReloadKey] = React.useState(0);
 
   const [name, setName] = React.useState("");
   const [priority, setPriority] = React.useState("med");
@@ -312,11 +326,21 @@ export default function ProjectsPage() {
             </CardHeader>
             <CardContent className="space-y-3">
               {p.description ? <div className="text-sm text-neutral-700">{p.description}</div> : <div className="text-sm text-neutral-500">No description.</div>}
-              <ProjectActions projectId={p.id} />
+              <ProjectActions projectId={p.id} reloadKey={actionReloadKey} onSelectAction={(a) => {
+                setSelectedAction({ ...a, parent_type: "project", parent_id: p.id, parent_name: p.name });
+              }} />
             </CardContent>
           </Card>
         ))}
       </div>
+
+      <ActionDetailModal
+        action={selectedAction}
+        projects={projects}
+        events={[]}
+        onClose={() => setSelectedAction(null)}
+        onSaved={() => { load(); setActionReloadKey((k) => k + 1); }}
+      />
     </div>
   );
 }

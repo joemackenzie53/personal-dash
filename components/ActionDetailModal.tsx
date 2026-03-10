@@ -117,7 +117,7 @@ export function ActionDetailModal({ action, projects, events, onClose, onSaved }
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 transition-opacity"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 transition-opacity"
       onClick={onClose}
     >
       <div

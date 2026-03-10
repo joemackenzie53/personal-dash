@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { fmtDate, fmtTime, isAllDay } from "@/lib/format";
+import { ActionDetailModal } from "@/components/ActionDetailModal";
 
 type EventRow = {
   event_key: string;
@@ -55,6 +56,10 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
 
   const [categories, setCategories] = React.useState<CategoryRow[]>([]);
   const [actions, setActions] = React.useState<ActionRow[]>([]);
+  const [selectedAction, setSelectedAction] = React.useState<{
+    id: string; title: string; status: string; priority: string;
+    due_at: string | null; parent_type: string | null; parent_id: string | null; parent_name: string | null;
+  } | null>(null);
   const [seriesTemplates, setSeriesTemplates] = React.useState<ActionRow[]>([]);
   const [newTemplateTitle, setNewTemplateTitle] = React.useState("");
   const [newTemplateDaysBefore, setNewTemplateDaysBefore] = React.useState<string>("");
@@ -250,9 +255,17 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
     const isDone = a.status === "done";
     const isGenerated = !!a.generated_from_action_id;
     return (
-      <li key={a.id} className="group flex items-center gap-2 rounded px-1 py-1 hover:bg-neutral-50">
+      <li
+        key={a.id}
+        className="group flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-neutral-50"
+        onClick={() => setSelectedAction({
+          id: a.id, title: a.title, status: a.status, priority: a.priority,
+          due_at: a.due_at, parent_type: "event", parent_id: event?.event_key || null,
+          parent_name: event?.title || null,
+        })}
+      >
         <button
-          onClick={() => toggleAction(a)}
+          onClick={(e) => { e.stopPropagation(); toggleAction(a); }}
           className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
             isDone
               ? "border-green-400 bg-green-100 text-green-600"
@@ -272,7 +285,7 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
         )}
         {!isDone && (
           <button
-            onClick={() => deleteAction(a.id)}
+            onClick={(e) => { e.stopPropagation(); deleteAction(a.id); }}
             className="shrink-0 rounded p-0.5 text-neutral-300 opacity-0 group-hover:opacity-100 hover:text-red-500"
             title={isGenerated ? "Remove from this instance" : "Delete"}
           >
@@ -498,6 +511,16 @@ export function EventDetailModal({ event, projects, onClose, onSaved }: Props) {
           )}
         </div>
       </div>
+
+      {selectedAction && (
+        <ActionDetailModal
+          action={selectedAction}
+          projects={projects}
+          events={event ? [{ event_key: event.event_key, title: event.title || "(no title)" }] : []}
+          onClose={() => setSelectedAction(null)}
+          onSaved={() => { if (event) loadActions(event.event_key); onSaved(); }}
+        />
+      )}
     </div>
   );
 }
