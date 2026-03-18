@@ -140,6 +140,16 @@ export default function NowPage() {
     }
   }
 
+  async function rescheduleOverdue() {
+    setErr(null);
+    try {
+      await api("/api/actions/reschedule-overdue", { method: "POST" });
+      await load();
+    } catch (e: any) {
+      setErr(e?.message || "Failed to reschedule");
+    }
+  }
+
   async function toggleAction(e: React.MouseEvent, actionId: string) {
     e.stopPropagation();
     try {
@@ -186,6 +196,20 @@ export default function NowPage() {
         </div>
         <div className="flex gap-2">
           <Button variant="secondary" onClick={load} disabled={loading}>Refresh</Button>
+          {overdue.length > 0 && (
+            <button
+              onClick={rescheduleOverdue}
+              disabled={loading}
+              title={`Reschedule ${overdue.length} overdue action${overdue.length !== 1 ? "s" : ""} to today`}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-800 transition-colors hover:bg-amber-100 disabled:opacity-50"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="13 19 22 12 13 5 13 19"/>
+                <polygon points="2 19 11 12 2 5 2 19"/>
+              </svg>
+              <span>{overdue.length}</span>
+            </button>
+          )}
           <Button onClick={runSync} disabled={loading}>Sync</Button>
         </div>
       </div>
