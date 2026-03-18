@@ -162,8 +162,10 @@ export default function NowPage() {
   }
 
   const todayStart = startOfDay(new Date());
-  const overdue = actions.filter((a) => a.due_at && new Date(a.due_at) < todayStart);
-  const dueSoon = actions.filter((a) => a.due_at && new Date(a.due_at) >= todayStart && new Date(a.due_at) <= addDays(todayStart, 3));
+  const tomorrowStart = addDays(todayStart, 1);
+  const pastDue = actions.filter((a) => a.due_at && new Date(a.due_at) < todayStart);
+  const overdue = actions.filter((a) => a.due_at && new Date(a.due_at) < tomorrowStart);
+  const dueSoon = actions.filter((a) => a.due_at && new Date(a.due_at) >= tomorrowStart && new Date(a.due_at) <= addDays(todayStart, 4));
   const unscheduled = actions.filter((a) => !a.due_at);
 
   const projectMap = React.useMemo(() => {
@@ -197,18 +199,18 @@ export default function NowPage() {
         </div>
         <div className="flex gap-2">
           <Button variant="secondary" onClick={load} disabled={loading}>Refresh</Button>
-          {overdue.length > 0 && (
+          {pastDue.length > 0 && (
             <button
               onClick={rescheduleOverdue}
               disabled={loading}
-              title={`Reschedule ${overdue.length} overdue action${overdue.length !== 1 ? "s" : ""} to today`}
+              title={`Reschedule ${pastDue.length} past-due action${pastDue.length !== 1 ? "s" : ""} to today`}
               className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-800 transition-colors hover:bg-amber-100 disabled:opacity-50"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polygon points="13 19 22 12 13 5 13 19"/>
                 <polygon points="2 19 11 12 2 5 2 19"/>
               </svg>
-              <span>{overdue.length}</span>
+              <span>{pastDue.length}</span>
             </button>
           )}
           <Button onClick={runSync} disabled={loading}>Sync</Button>
@@ -278,7 +280,7 @@ export default function NowPage() {
 
             {!!overdue.length && (
               <section className="space-y-2">
-                <div className="text-xs font-semibold uppercase tracking-wide text-neutral-600">Overdue</div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-neutral-600">Overdue / Today</div>
                 <ul className="space-y-2">
                   {overdue.map((a) => (
                     <li key={a.id} className="cursor-pointer rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 hover:bg-neutral-100" onClick={() => setSelectedAction(a)}>
