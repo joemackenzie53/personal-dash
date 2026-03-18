@@ -161,8 +161,9 @@ export default function NowPage() {
     } catch {}
   }
 
-  const overdue = actions.filter((a) => a.due_at && new Date(a.due_at) < new Date());
-  const dueSoon = actions.filter((a) => a.due_at && new Date(a.due_at) >= new Date() && new Date(a.due_at) <= addDays(new Date(), 3));
+  const todayStart = startOfDay(new Date());
+  const overdue = actions.filter((a) => a.due_at && new Date(a.due_at) < todayStart);
+  const dueSoon = actions.filter((a) => a.due_at && new Date(a.due_at) >= todayStart && new Date(a.due_at) <= addDays(todayStart, 3));
   const unscheduled = actions.filter((a) => !a.due_at);
 
   const projectMap = React.useMemo(() => {
