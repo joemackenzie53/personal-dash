@@ -21,7 +21,7 @@ export async function POST() {
       [todayIso]
     );
 
-    return ok({ updated: result.changes ?? 0 });
+    return ok({ updated: result.rowCount ?? 0 });
   } catch (e) {
     return handleError(e);
   }
