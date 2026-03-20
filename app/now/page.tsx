@@ -280,7 +280,7 @@ export default function NowPage() {
 
             {!!overdue.length && (
               <section className="space-y-2">
-                <div className="text-xs font-semibold uppercase tracking-wide text-neutral-600">Overdue / Today</div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-neutral-600">Overdue / Today ({overdue.length})</div>
                 <ul className="space-y-2">
                   {overdue.map((a) => (
                     <li key={a.id} className="cursor-pointer rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 hover:bg-neutral-100" onClick={() => setSelectedAction(a)}>
@@ -312,7 +312,7 @@ export default function NowPage() {
 
             {!!dueSoon.length && (
               <section className="space-y-2">
-                <div className="text-xs font-semibold uppercase tracking-wide text-neutral-600">Due soon</div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-neutral-600">Due soon ({dueSoon.length})</div>
                 <ul className="space-y-2">
                   {dueSoon.map((a) => (
                     <li key={a.id} className="cursor-pointer rounded-lg border border-neutral-200 px-3 py-2 hover:bg-neutral-50" onClick={() => setSelectedAction(a)}>
@@ -344,7 +344,7 @@ export default function NowPage() {
 
             {!!unscheduled.length && (
               <section className="space-y-2">
-                <div className="text-xs font-semibold uppercase tracking-wide text-neutral-600">Unscheduled</div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-neutral-600">Unscheduled ({unscheduled.length})</div>
                 <ul className="space-y-2">
                   {unscheduled.map((a) => (
                     <li key={a.id} className="cursor-pointer rounded-lg border border-neutral-200 px-3 py-2 hover:bg-neutral-50" onClick={() => setSelectedAction(a)}>

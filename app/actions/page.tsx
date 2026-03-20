@@ -140,10 +140,11 @@ export default function ActionsPage() {
   const open = actions.filter((a) => a.status === "open");
   const done = actions.filter((a) => a.status === "done");
 
-  const now = new Date();
-  const overdue = open.filter((a) => a.due_at && new Date(a.due_at) < now);
-  const dueSoon = open.filter((a) => a.due_at && new Date(a.due_at) >= now && new Date(a.due_at) <= addDays(now, 3));
-  const upcoming = open.filter((a) => a.due_at && new Date(a.due_at) > addDays(now, 3));
+  const todayStart = startOfDay(new Date());
+  const tomorrowStart = addDays(todayStart, 1);
+  const overdue = open.filter((a) => a.due_at && new Date(a.due_at) < tomorrowStart);
+  const dueSoon = open.filter((a) => a.due_at && new Date(a.due_at) >= tomorrowStart && new Date(a.due_at) <= addDays(todayStart, 4));
+  const upcoming = open.filter((a) => a.due_at && new Date(a.due_at) > addDays(todayStart, 4));
   const unscheduled = open.filter((a) => !a.due_at);
 
   function renderActionRow(a: ActionRow, tone?: "red" | "amber") {
@@ -263,28 +264,28 @@ export default function ActionsPage() {
 
           {!!overdue.length && (
             <section className="space-y-2">
-              <div className="text-xs font-semibold uppercase tracking-wide text-red-600">Overdue</div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-red-600">Overdue / Today ({overdue.length})</div>
               <ul className="space-y-2">{overdue.map((a) => renderActionRow(a, "red"))}</ul>
             </section>
           )}
 
           {!!dueSoon.length && (
             <section className="space-y-2">
-              <div className="text-xs font-semibold uppercase tracking-wide text-amber-600">Due soon</div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-amber-600">Due soon ({dueSoon.length})</div>
               <ul className="space-y-2">{dueSoon.map((a) => renderActionRow(a, "amber"))}</ul>
             </section>
           )}
 
           {!!upcoming.length && (
             <section className="space-y-2">
-              <div className="text-xs font-semibold uppercase tracking-wide text-neutral-600">Upcoming</div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-neutral-600">Upcoming ({upcoming.length})</div>
               <ul className="space-y-2">{upcoming.map((a) => renderActionRow(a))}</ul>
             </section>
           )}
 
           {!!unscheduled.length && (
             <section className="space-y-2">
-              <div className="text-xs font-semibold uppercase tracking-wide text-neutral-600">Unscheduled</div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-neutral-600">Unscheduled ({unscheduled.length})</div>
               <ul className="space-y-2">{unscheduled.map((a) => renderActionRow(a))}</ul>
             </section>
           )}
