@@ -1,5 +1,6 @@
 "use client";
 import * as React from "react";
+import { flushSync } from "react-dom";
 import { api } from "@/lib/client";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -105,9 +106,11 @@ export default function SettingsPage() {
   }
 
   async function sync() {
-    setSyncMsg("Sync in progress…");
-    setErr(null);
-    setSyncing(true);
+    flushSync(() => {
+      setSyncMsg("Sync in progress…");
+      setErr(null);
+      setSyncing(true);
+    });
     const started = Date.now();
     const minDelay = () => {
       const elapsed = Date.now() - started;
@@ -243,11 +246,21 @@ export default function SettingsPage() {
               </a>
             ) : (
               <>
-                <div className="flex items-center gap-2">
-                  <Button onClick={sync} disabled={syncing || saving}>
-                    {syncing ? "Syncing…" : "Sync now"}
-                  </Button>
-                  <Button variant="danger" onClick={disconnect} disabled={syncing || saving}>Disconnect</Button>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Button onClick={sync} disabled={syncing || saving}>
+                      {syncing ? "Syncing…" : "Sync now"}
+                    </Button>
+                    <Button variant="danger" onClick={disconnect} disabled={syncing || saving}>Disconnect</Button>
+                  </div>
+                  {syncMsg && (
+                    <p className={`text-xs font-medium ${
+                      syncMsg === "Sync in progress…" ? "text-amber-700" :
+                      syncMsg.startsWith("Sync failed") ? "text-red-600" : "text-green-700"
+                    }`}>
+                      {syncMsg}
+                    </p>
+                  )}
                 </div>
               </>
             )}
