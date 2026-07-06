@@ -86,6 +86,12 @@ export default function NowPage() {
   const [newTitle, setNewTitle] = React.useState("");
   const [newDue, setNewDue] = React.useState<string>("");
   const [newParent, setNewParent] = React.useState<string>("");
+  const [adding, setAdding] = React.useState(false);
+
+  const [selectMode, setSelectMode] = React.useState(false);
+  const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
+  const [bulkPanel, setBulkPanel] = React.useState<"due" | "start" | "priority" | "snooze" | null>(null);
+  const [bulkValue, setBulkValue] = React.useState("");
 
   async function load() {
     setLoading(true);
@@ -126,6 +132,8 @@ export default function NowPage() {
   }
 
   async function addAction() {
+    if (!newTitle.trim() || adding) return;
+    setAdding(true);
     setErr(null);
     try {
       const dueAt = newDue ? new Date(newDue).toISOString() : null;
@@ -138,14 +146,16 @@ export default function NowPage() {
       }
       await api("/api/actions", {
         method: "POST",
-        body: JSON.stringify({ title: newTitle, dueAt, parentType, parentId })
+        body: JSON.stringify({ title: newTitle.trim(), dueAt, parentType, parentId })
       });
       setNewTitle("");
       setNewDue("");
       setNewParent("");
       await load();
     } catch (e: any) {
-      setErr(e?.message || "Failed to add");
+      setErr(e?.message || "Failed to add action");
+    } finally {
+      setAdding(false);
     }
   }
 
@@ -168,6 +178,38 @@ export default function NowPage() {
       });
       await load();
     } catch {}
+  }
+
+  function enterSelectMode() { setSelectMode(true); setSelectedIds(new Set()); setBulkPanel(null); setBulkValue(""); }
+  function exitSelectMode() { setSelectMode(false); setSelectedIds(new Set()); setBulkPanel(null); setBulkValue(""); }
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  async function applyBulk(body: Record<string, unknown>) {
+    if (!selectedIds.size) return;
+    setErr(null);
+    try {
+      await Promise.all(
+        [...selectedIds].map((id) =>
+          api(`/api/actions/${id}`, { method: "PUT", body: JSON.stringify(body) })
+        )
+      );
+      exitSelectMode();
+      await load();
+    } catch (e: any) {
+      setErr(e?.message || "Bulk update failed");
+    }
+  }
+
+  function isoDate(offsetDays: number) {
+    const d = new Date();
+    d.setDate(d.getDate() + offsetDays);
+    return d.toISOString().substring(0, 10);
   }
 
   const PRIORITY_ORDER: Record<string, number> = { high: 0, med: 1, low: 2 };
@@ -209,6 +251,54 @@ export default function NowPage() {
     if (a.parent_type === "project") return projectMap[a.parent_id] || "Project";
     if (a.parent_type === "event") return eventMap[a.parent_id] || "Event";
     return null;
+  }
+
+  function renderNowRow(a: ActionRow, tone?: "red" | "amber") {
+    const selected = selectedIds.has(a.id);
+    const bgClass = tone === "red" ? "bg-neutral-50" : "";
+    const pl = parentLabel(a);
+    return (
+      <li
+        key={a.id}
+        className={`cursor-pointer rounded-lg border px-3 py-2 transition-colors ${selected ? "border-blue-400 bg-blue-50" : `border-neutral-200 ${bgClass} hover:bg-neutral-100`}`}
+        onClick={() => selectMode ? toggleSelect(a.id) : setSelectedAction(a)}
+      >
+        <div className="flex items-start gap-2">
+          {selectMode ? (
+            <button
+              onClick={(e) => { e.stopPropagation(); toggleSelect(a.id); }}
+              className="-ml-1 flex-shrink-0 p-1.5"
+              aria-label={selected ? "Deselect" : "Select"}
+            >
+              <span className={`flex h-[18px] w-[18px] items-center justify-center rounded-full border-2 transition-colors ${selected ? "border-blue-500 bg-blue-500" : "border-neutral-400"}`}>
+                {selected && <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+              </span>
+            </button>
+          ) : (
+            <button onClick={(e) => toggleAction(e, a.id)} className="-ml-1 flex-shrink-0 p-1.5 rounded-full hover:bg-green-50 transition-colors" aria-label="Complete action">
+              <span className="block h-[18px] w-[18px] rounded-full border-2 border-neutral-400 hover:border-green-500 transition-colors" />
+            </button>
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-medium">{a.title}</div>
+            <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-neutral-600">
+              {a.due_at && !tone && <span>{fmtDate(a.due_at)}</span>}
+              {pl && (
+                <span className="inline-flex items-center gap-1 rounded bg-neutral-200/60 px-1.5 py-0.5 text-neutral-600">
+                  {a.parent_type === "project" ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                  )}
+                  {pl}
+                </span>
+              )}
+            </div>
+          </div>
+          {tone && <Badge tone={tone}>{fmtDate(a.due_at || "")}</Badge>}
+        </div>
+      </li>
+    );
   }
 
   function buildExportJson(): string {
@@ -331,7 +421,7 @@ export default function NowPage() {
                 ))}
               </optgroup>}
             </Select>
-            <Button onClick={addAction} disabled={!newTitle.trim()}>Add</Button>
+            <Button onClick={addAction} disabled={!newTitle.trim() || adding}>{adding ? "Adding…" : "Add"}</Button>
           </div>
         </CardContent>
       </Card>
@@ -339,109 +429,42 @@ export default function NowPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <div className="text-sm font-semibold">Action queue</div>
-              <div className="text-xs text-neutral-500">{actions.length} open</div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-neutral-500">{visibleActions.length} open</span>
+                {!selectMode
+                  ? <button onClick={enterSelectMode} className="rounded-lg border border-neutral-200 px-2.5 py-1 text-xs font-medium text-neutral-600 hover:bg-neutral-50">Select</button>
+                  : <button onClick={exitSelectMode} className="rounded-lg border border-neutral-200 px-2.5 py-1 text-xs font-medium text-neutral-600 hover:bg-neutral-50">Cancel</button>
+                }
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
             {loading && <div className="text-sm text-neutral-500">Loading…</div>}
 
-            {!loading && actions.length === 0 && (
+            {!loading && visibleActions.length === 0 && (
               <div className="text-sm text-neutral-500">No open actions.</div>
             )}
 
             {!!overdue.length && (
               <section className="space-y-2">
-                <div className="text-xs font-semibold uppercase tracking-wide text-neutral-600">Overdue / Today ({overdue.length})</div>
-                <ul className="space-y-2">
-                  {overdue.map((a) => (
-                    <li key={a.id} className="cursor-pointer rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 hover:bg-neutral-100" onClick={() => setSelectedAction(a)}>
-                      <div className="flex items-start gap-2">
-                        <button onClick={(e) => toggleAction(e, a.id)} className="-ml-1 flex-shrink-0 p-1.5 rounded-full hover:bg-green-50 transition-colors" aria-label="Complete action"><span className="block h-[18px] w-[18px] rounded-full border-2 border-neutral-400 hover:border-green-500 transition-colors" /></button>
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm font-medium">{a.title}</div>
-                          <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-neutral-600">
-                            {a.due_at && <span>{fmtDate(a.due_at)}</span>}
-                            {parentLabel(a) && (
-                              <span className="inline-flex items-center gap-1 rounded bg-neutral-200/60 px-1.5 py-0.5 text-neutral-600">
-                                {a.parent_type === "project" ? (
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-                                ) : (
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                                )}
-                                {parentLabel(a)}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <Badge tone="red">{fmtDate(a.due_at || "")}</Badge>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                <div className="text-xs font-semibold uppercase tracking-wide text-red-600">Overdue / Today ({overdue.length})</div>
+                <ul className="space-y-2">{overdue.map((a) => renderNowRow(a, "red"))}</ul>
               </section>
             )}
 
             {!!dueSoon.length && (
               <section className="space-y-2">
-                <div className="text-xs font-semibold uppercase tracking-wide text-neutral-600">Due soon ({dueSoon.length})</div>
-                <ul className="space-y-2">
-                  {dueSoon.map((a) => (
-                    <li key={a.id} className="cursor-pointer rounded-lg border border-neutral-200 px-3 py-2 hover:bg-neutral-50" onClick={() => setSelectedAction(a)}>
-                      <div className="flex items-start gap-2">
-                        <button onClick={(e) => toggleAction(e, a.id)} className="-ml-1 flex-shrink-0 p-1.5 rounded-full hover:bg-green-50 transition-colors" aria-label="Complete action"><span className="block h-[18px] w-[18px] rounded-full border-2 border-neutral-400 hover:border-green-500 transition-colors" /></button>
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm font-medium">{a.title}</div>
-                          <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-neutral-600">
-                            {a.due_at && <span>{fmtDate(a.due_at)}</span>}
-                            {parentLabel(a) && (
-                              <span className="inline-flex items-center gap-1 rounded bg-neutral-200/60 px-1.5 py-0.5 text-neutral-600">
-                                {a.parent_type === "project" ? (
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-                                ) : (
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                                )}
-                                {parentLabel(a)}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <Badge tone="amber">{fmtDate(a.due_at || "")}</Badge>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                <div className="text-xs font-semibold uppercase tracking-wide text-amber-600">Due soon ({dueSoon.length})</div>
+                <ul className="space-y-2">{dueSoon.map((a) => renderNowRow(a, "amber"))}</ul>
               </section>
             )}
 
             {!!unscheduled.length && (
               <section className="space-y-2">
                 <div className="text-xs font-semibold uppercase tracking-wide text-neutral-600">Unscheduled ({unscheduled.length})</div>
-                <ul className="space-y-2">
-                  {unscheduled.map((a) => (
-                    <li key={a.id} className="cursor-pointer rounded-lg border border-neutral-200 px-3 py-2 hover:bg-neutral-50" onClick={() => setSelectedAction(a)}>
-                      <div className="flex items-start gap-2">
-                        <button onClick={(e) => toggleAction(e, a.id)} className="-ml-1 flex-shrink-0 p-1.5 rounded-full hover:bg-green-50 transition-colors" aria-label="Complete action"><span className="block h-[18px] w-[18px] rounded-full border-2 border-neutral-400 hover:border-green-500 transition-colors" /></button>
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm font-medium">{a.title}</div>
-                          {parentLabel(a) && (
-                            <div className="mt-0.5 text-xs">
-                              <span className="inline-flex items-center gap-1 rounded bg-neutral-200/60 px-1.5 py-0.5 text-neutral-600">
-                                {a.parent_type === "project" ? (
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-                                ) : (
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                                )}
-                                {parentLabel(a)}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                <ul className="space-y-2">{unscheduled.map((a) => renderNowRow(a))}</ul>
               </section>
             )}
           </CardContent>
@@ -511,6 +534,64 @@ export default function NowPage() {
           </CardContent>
         </Card>
       </div>
+
+      {selectMode && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-neutral-200 bg-white shadow-lg">
+          <div className="mx-auto max-w-2xl px-4 py-3">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <span className="text-sm font-medium text-neutral-700">
+                {selectedIds.size} selected
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                <button onClick={() => { setBulkPanel(bulkPanel === "due" ? null : "due"); setBulkValue(""); }} className="rounded-lg border border-neutral-200 px-2.5 py-1 text-xs font-medium text-neutral-600 hover:bg-neutral-50">Due date</button>
+                <button onClick={() => { setBulkPanel(bulkPanel === "start" ? null : "start"); setBulkValue(""); }} className="rounded-lg border border-neutral-200 px-2.5 py-1 text-xs font-medium text-neutral-600 hover:bg-neutral-50">Start date</button>
+                <button onClick={() => { setBulkPanel(bulkPanel === "priority" ? null : "priority"); setBulkValue("med"); }} className="rounded-lg border border-neutral-200 px-2.5 py-1 text-xs font-medium text-neutral-600 hover:bg-neutral-50">Priority</button>
+                <button onClick={() => { setBulkPanel(bulkPanel === "snooze" ? null : "snooze"); setBulkValue(""); }} className="rounded-lg border border-neutral-200 px-2.5 py-1 text-xs font-medium text-neutral-600 hover:bg-neutral-50">Snooze</button>
+                <button onClick={() => applyBulk({ snoozeUntil: null })} disabled={!selectedIds.size} className="rounded-lg border border-neutral-200 px-2.5 py-1 text-xs font-medium text-neutral-600 hover:bg-neutral-50 disabled:opacity-40">Clear snooze</button>
+                <button onClick={() => applyBulk({ status: "done" })} disabled={!selectedIds.size} className="rounded-lg border border-green-300 bg-green-50 px-2.5 py-1 text-xs font-medium text-green-800 hover:bg-green-100 disabled:opacity-40">Mark done</button>
+              </div>
+            </div>
+
+            {bulkPanel === "due" && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <button onClick={() => applyBulk({ dueAt: new Date(isoDate(0)).toISOString() })} className="rounded-lg border border-neutral-200 px-2.5 py-1 text-xs font-medium hover:bg-neutral-50">Today</button>
+                <button onClick={() => applyBulk({ dueAt: new Date(isoDate(1)).toISOString() })} className="rounded-lg border border-neutral-200 px-2.5 py-1 text-xs font-medium hover:bg-neutral-50">Tomorrow</button>
+                <button onClick={() => { const d = new Date(); d.setDate(d.getDate() + (6 - d.getDay() + 6) % 7 || 7); applyBulk({ dueAt: d.toISOString() }); }} className="rounded-lg border border-neutral-200 px-2.5 py-1 text-xs font-medium hover:bg-neutral-50">Sat</button>
+                <button onClick={() => { const d = new Date(); d.setDate(d.getDate() + (8 - d.getDay()) % 7 || 7); applyBulk({ dueAt: d.toISOString() }); }} className="rounded-lg border border-neutral-200 px-2.5 py-1 text-xs font-medium hover:bg-neutral-50">Mon</button>
+                <Input type="date" value={bulkValue} onChange={(e) => setBulkValue(e.target.value)} className="h-7 w-36 text-xs" />
+                <button onClick={() => bulkValue && applyBulk({ dueAt: new Date(bulkValue).toISOString() })} disabled={!bulkValue} className="rounded-lg border border-blue-300 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-800 hover:bg-blue-100 disabled:opacity-40">Apply</button>
+              </div>
+            )}
+
+            {bulkPanel === "start" && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <button onClick={() => applyBulk({ startAt: new Date(isoDate(0)).toISOString() })} className="rounded-lg border border-neutral-200 px-2.5 py-1 text-xs font-medium hover:bg-neutral-50">Today</button>
+                <button onClick={() => applyBulk({ startAt: new Date(isoDate(1)).toISOString() })} className="rounded-lg border border-neutral-200 px-2.5 py-1 text-xs font-medium hover:bg-neutral-50">Tomorrow</button>
+                <Input type="date" value={bulkValue} onChange={(e) => setBulkValue(e.target.value)} className="h-7 w-36 text-xs" />
+                <button onClick={() => bulkValue && applyBulk({ startAt: new Date(bulkValue).toISOString() })} disabled={!bulkValue} className="rounded-lg border border-blue-300 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-800 hover:bg-blue-100 disabled:opacity-40">Apply</button>
+              </div>
+            )}
+
+            {bulkPanel === "priority" && (
+              <div className="flex items-center gap-2">
+                {["high", "med", "low"].map((p) => (
+                  <button key={p} onClick={() => applyBulk({ priority: p })} className={`rounded-lg border px-2.5 py-1 text-xs font-medium capitalize hover:bg-neutral-50 ${bulkValue === p ? "border-blue-400 bg-blue-50 text-blue-800" : "border-neutral-200 text-neutral-600"}`} onMouseEnter={() => setBulkValue(p)}>{p}</button>
+                ))}
+              </div>
+            )}
+
+            {bulkPanel === "snooze" && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <button onClick={() => applyBulk({ snoozeUntil: new Date(isoDate(1)).toISOString() })} className="rounded-lg border border-neutral-200 px-2.5 py-1 text-xs font-medium hover:bg-neutral-50">Tomorrow</button>
+                <button onClick={() => applyBulk({ snoozeUntil: new Date(isoDate(3)).toISOString() })} className="rounded-lg border border-neutral-200 px-2.5 py-1 text-xs font-medium hover:bg-neutral-50">3 days</button>
+                <button onClick={() => applyBulk({ snoozeUntil: new Date(isoDate(7)).toISOString() })} className="rounded-lg border border-neutral-200 px-2.5 py-1 text-xs font-medium hover:bg-neutral-50">1 week</button>
+                <Input type="date" value={bulkValue} onChange={(e) => setBulkValue(e.target.value)} className="h-7 w-36 text-xs" />
+                <button onClick={() => bulkValue && applyBulk({ snoozeUntil: new Date(bulkValue).toISOString() })} disabled={!bulkValue} className="rounded-lg border border-blue-300 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-800 hover:bg-blue-100 disabled:opacity-40">Apply</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <EventDetailModal
         event={selectedEvent}
