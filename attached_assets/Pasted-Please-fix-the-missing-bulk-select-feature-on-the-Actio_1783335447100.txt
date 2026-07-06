@@ -1,0 +1,138 @@
+Please fix the missing bulk-select feature on the Actions page and also investigate the action creation persistence bug.
+
+Context:
+This is the Personal Dash app. It is a mobile-first personal dashboard. The Actions page is the main backlog-management page. Previous work was meant to add bulk select, but I cannot see any Select button or bulk-select mode on the Actions page. Also, creating a new action sometimes appears to succeed but the action does not actually appear/persist.
+
+Important:
+Please keep this narrow. Do not redesign the app. Do not work on Google sync. Do not work on Projects, Horizon, Triage, Settings, or Calendar unless strictly necessary. Do not implement recurring actions. Do not add new dependencies. Do not do a broad refactor.
+
+Relevant context:
+
+* Actions already have fields including status, priority, due_at, start_at, snooze_until, parent_type, parent_id, description, tags, checklist.
+* The app already has an action update route and action list route.
+* The mobile UI uses card rows with a left-side completion circle, compact pills, and bottom navigation. Preserve this design language.
+
+Please do this in two parts.
+
+PART 1 — Fix/check action creation persistence
+
+Before implementing bulk select, confirm that creating an action from the Actions page actually persists.
+
+Please inspect:
+
+* app/actions/page.tsx
+* app/api/actions/route.ts
+* app/api/actions/[id]/route.ts
+* lib/client.ts if relevant
+* lib/db.ts only if necessary
+
+Check:
+
+* Is the create action request actually being sent?
+* Is the backend returning success even when insert fails?
+* Is the frontend clearing the form optimistically before confirming success?
+* Is the list being refreshed after creation?
+* Is the new action filtered out because of start_at, snooze_until, status, parent linkage, or grouping logic?
+* Are required fields missing from the POST body?
+* Is there a mismatch between field names expected by the API and sent by the form?
+
+Required behaviour:
+
+* When I create an action from the Actions page, it must persist in the database.
+* After create succeeds, refresh/reload the actions list from the server.
+* If create fails, show a visible error and do not pretend it succeeded.
+* Do not rely only on optimistic UI.
+* Keep the quick-add form simple.
+
+Acceptance criteria:
+
+* Create a test action on the Actions page.
+* It appears after creation.
+* Refresh the browser.
+* It is still there.
+* If the API fails, I see an error.
+
+PART 2 — Implement bulk-select on Actions page only
+
+Please add a mobile-friendly bulk-select mode to the Actions page.
+
+Where it should appear:
+
+* On the Actions page, near the “Open actions” heading, add a visible “Select” button.
+* This must be visible on mobile; do not hide it behind hover or desktop-only UI.
+
+Selection mode behaviour:
+
+* Tapping “Select” enters selection mode.
+* In selection mode, action rows show selectable checkboxes.
+* The existing left-side completion circle may become the selection checkbox while in selection mode.
+* Tapping a row/checkbox selects or deselects the action.
+* Show a selected count.
+* Show a “Cancel” button to exit selection mode.
+* Existing single-action completion should still work when not in selection mode.
+
+Bulk action UI:
+
+* Show a sticky bottom bulk-action bar above the existing bottom nav.
+* It must not be hidden behind the bottom navigation.
+* Keep it compact and mobile-friendly.
+
+Bulk actions required:
+
+1. Set due date
+2. Set start date
+3. Set priority
+4. Snooze until date
+5. Clear snooze
+6. Mark done
+
+Implementation guidance:
+
+* Prefer the smallest robust implementation.
+* It is acceptable to reuse the existing single-action update endpoint and call it for each selected action, if that is simpler.
+* If adding a new bulk endpoint is cleaner, keep it limited to actions only, for example POST /api/actions/bulk-update.
+* Do not implement complex optimistic updates.
+* After bulk update succeeds, refresh the action list from the server.
+* If one or more updates fail, show a visible error.
+* Disable the bulk action controls while the update is running.
+* Do not silently fail.
+
+Important behaviour:
+
+* Bulk setting due date should update due_at for all selected actions.
+* Bulk setting start date should update start_at for all selected actions.
+* Bulk priority should update priority for all selected actions.
+* Bulk snooze should update snooze_until for all selected actions.
+* Clear snooze should set snooze_until to null/empty for all selected actions.
+* Mark done should set status to done for all selected actions.
+
+Acceptance criteria:
+
+* I can see a “Select” button on the Actions page on mobile.
+* Tapping it enters selection mode.
+* I can select multiple actions.
+* I can cancel selection mode.
+* I can bulk move selected actions to a new due date.
+* I can bulk set start date.
+* I can bulk change priority.
+* I can bulk snooze selected actions.
+* I can clear snooze.
+* I can bulk mark selected actions done.
+* After each bulk update, the list refreshes and the changes remain after browser refresh.
+* Existing one-by-one action completion still works outside selection mode.
+
+Cost-control rules:
+
+* Inspect only the smallest relevant files first.
+* Do not refactor shared components unless absolutely necessary.
+* Do not touch unrelated pages.
+* Do not change the database schema unless absolutely required.
+* If this cannot be done safely without a larger refactor, stop and explain exactly why.
+
+After implementing:
+
+* Tell me exactly which files changed.
+* Tell me where the Select button is.
+* Tell me whether you reused existing update calls or added a bulk endpoint.
+* Explain what caused the action creation persistence bug, if found.
+* Give manual test steps for creating an action and for each bulk action.

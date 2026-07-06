@@ -63,6 +63,7 @@ export default function ActionsPage() {
   const [newTitle, setNewTitle] = React.useState("");
   const [newDue, setNewDue] = React.useState("");
   const [newParent, setNewParent] = React.useState("");
+  const [adding, setAdding] = React.useState(false);
 
   async function load() {
     setLoading(true);
@@ -88,7 +89,8 @@ export default function ActionsPage() {
   }, []);
 
   async function addAction() {
-    if (!newTitle.trim()) return;
+    if (!newTitle.trim() || adding) return;
+    setAdding(true);
     setErr(null);
     try {
       const dueAt = newDue ? new Date(newDue).toISOString() : null;
@@ -108,7 +110,9 @@ export default function ActionsPage() {
       setNewParent("");
       await load();
     } catch (e: any) {
-      setErr(e?.message || "Failed to add");
+      setErr(e?.message || "Failed to add action");
+    } finally {
+      setAdding(false);
     }
   }
 
@@ -305,7 +309,7 @@ export default function ActionsPage() {
                 </optgroup>
               )}
             </Select>
-            <Button onClick={addAction} disabled={!newTitle.trim()}>Add</Button>
+            <Button onClick={addAction} disabled={!newTitle.trim() || adding}>{adding ? "Adding…" : "Add"}</Button>
           </div>
         </CardContent>
       </Card>
