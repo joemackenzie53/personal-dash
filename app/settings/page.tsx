@@ -105,14 +105,21 @@ export default function SettingsPage() {
   }
 
   async function sync() {
-    setSyncMsg(null);
+    setSyncMsg("Sync in progress…");
     setErr(null);
     setSyncing(true);
+    const started = Date.now();
+    const minDelay = () => {
+      const elapsed = Date.now() - started;
+      return elapsed < 500 ? new Promise<void>((r) => setTimeout(r, 500 - elapsed)) : Promise.resolve();
+    };
     try {
       const res = await api<any>("/api/sync", { method: "POST" });
-      setSyncMsg(`Synced ${res.calendarsSynced} calendar${res.calendarsSynced !== 1 ? "s" : ""}, ${res.eventsUpserted} events.`);
+      await minDelay();
+      setSyncMsg(`Sync complete — ${res.calendarsSynced} calendar${res.calendarsSynced !== 1 ? "s" : ""}, ${res.eventsUpserted} events.`);
       await load();
     } catch (e: any) {
+      await minDelay();
       setSyncMsg(`Sync failed: ${e?.message || "unknown error"}`);
     } finally {
       setSyncing(false);
@@ -207,6 +214,11 @@ export default function SettingsPage() {
         </Notice>
       )}
       {msg && <Notice tone="green">{msg}</Notice>}
+      {syncMsg && (
+        <Notice tone={syncMsg.startsWith("Sync failed") ? "red" : syncMsg === "Sync in progress…" ? "amber" : "green"}>
+          {syncMsg}
+        </Notice>
+      )}
 
       <Card>
         <CardHeader>
@@ -237,11 +249,6 @@ export default function SettingsPage() {
                   </Button>
                   <Button variant="danger" onClick={disconnect} disabled={syncing || saving}>Disconnect</Button>
                 </div>
-                {syncMsg && (
-                  <span className={`text-xs font-medium ${syncMsg.startsWith("Sync failed") ? "text-red-600" : "text-green-700"}`}>
-                    {syncMsg}
-                  </span>
-                )}
               </>
             )}
           </div>

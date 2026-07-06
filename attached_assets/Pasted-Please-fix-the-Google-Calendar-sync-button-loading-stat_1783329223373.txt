@@ -1,0 +1,60 @@
+Please fix the Google Calendar sync button loading/status feedback only.
+
+Context:
+The previous tranche was meant to add loading/success/error feedback to the sync button on the Settings page, but in the live app the sync button still looks exactly the same as before. Other tranche items are working, so please do not touch them.
+
+Goal:
+When I click the Google Calendar sync button, I should clearly see that sync is running, and then see whether it succeeded or failed.
+
+Scope:
+
+* Only inspect and change the Settings page sync button logic and any directly related client/API handling.
+* Do not redesign the Settings page.
+* Do not change project editing/archive/delete.
+* Do not change priority sorting.
+* Do not change JSON export.
+* Do not change database schema.
+* Do not add new dependencies.
+
+Please check:
+
+1. Whether the Settings page has a `syncing` or loading state.
+2. Whether the sync button’s `onClick` handler actually sets loading state before awaiting the sync API call.
+3. Whether the loading state is reset in a `finally` block.
+4. Whether the button text changes during sync.
+5. Whether the button is disabled during sync.
+6. Whether success/error state is shown visibly near the button.
+7. Whether errors from the API are being swallowed silently.
+
+Required behaviour:
+
+* When sync starts:
+
+  * Button becomes disabled.
+  * Button text changes to something like “Syncing…”.
+  * A small visible status message appears, e.g. “Sync in progress…”.
+* When sync succeeds:
+
+  * Show a visible success message, e.g. “Sync complete.”
+  * If useful, include a timestamp like “Last synced just now.”
+* When sync fails:
+
+  * Show a visible error message.
+  * Do not silently fail.
+* Use `try/catch/finally`.
+* Reset the loading state in `finally`.
+* If the sync completes very quickly, keep the “Syncing…” state visible for at least 500ms so the feedback is noticeable.
+
+Acceptance criteria:
+
+* I can click the sync button and immediately see that it is doing something.
+* I cannot click the sync button repeatedly while sync is in progress.
+* I see a visible success or error message after the sync finishes.
+* The fix works on mobile.
+* No unrelated features are changed.
+
+After making the change:
+
+* Tell me exactly which file or files were changed.
+* Explain why the previous loading feedback was not visible.
+* Tell me how to test it manually.
