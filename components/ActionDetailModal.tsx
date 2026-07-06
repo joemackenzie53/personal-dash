@@ -12,8 +12,8 @@ type ActionRow = {
   status: string;
   priority: string;
   due_at: string | null;
-  start_at: string | null;
-  snooze_until: string | null;
+  start_at?: string | null;
+  snooze_until?: string | null;
   description: string | null;
   parent_type: string | null;
   parent_id: string | null;
@@ -32,7 +32,7 @@ type Props = {
   onSaved: () => void;
 };
 
-function toDateInput(iso: string | null): string {
+function toDateInput(iso: string | null | undefined): string {
   if (!iso) return "";
   const d = new Date(iso);
   if (isNaN(d.getTime())) return "";
