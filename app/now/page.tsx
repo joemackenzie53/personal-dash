@@ -47,6 +47,13 @@ type ActionRow = {
   status: string;
   priority: string;
   due_at: string | null;
+  start_at: string | null;
+  snooze_until: string | null;
+  reference_url: string | null;
+  tags: string | null;
+  checklist: string | null;
+  generated_from_action_id: string | null;
+  due_days_before: number | null;
   description: string | null;
   parent_type: string | null;
   parent_id: string | null;
@@ -73,6 +80,8 @@ export default function NowPage() {
   const [err, setErr] = React.useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = React.useState<EventRow | null>(null);
   const [selectedAction, setSelectedAction] = React.useState<ActionRow | null>(null);
+  const [showExport, setShowExport] = React.useState(false);
+  const [exportCopied, setExportCopied] = React.useState(false);
 
   const [newTitle, setNewTitle] = React.useState("");
   const [newDue, setNewDue] = React.useState<string>("");
@@ -193,6 +202,55 @@ export default function NowPage() {
     return null;
   }
 
+  function buildExportJson(): string {
+    const openActions = actions.filter((a) => a.status === "open");
+    const payload = {
+      exported_at: new Date().toISOString(),
+      date: new Date().toISOString().substring(0, 10),
+      actions: openActions.map((a) => ({
+        id: a.id,
+        title: a.title,
+        status: a.status,
+        priority: a.priority,
+        due_at: a.due_at,
+        start_at: a.start_at,
+        snooze_until: a.snooze_until,
+        parent_type: a.parent_type,
+        parent_id: a.parent_id,
+        reference_url: a.reference_url,
+        description: a.description,
+        tags: a.tags,
+        checklist: a.checklist,
+        generated_from_action_id: a.generated_from_action_id,
+        due_days_before: a.due_days_before,
+      })),
+      events: events.map((e) => ({
+        id: e.event_key,
+        title: e.title,
+        start: e.start,
+        end: e.end,
+        all_day: e.all_day,
+        category: e.category,
+        is_major: e.is_major,
+        project_id: e.project_id,
+        notes_url: e.notes_url,
+        location: e.location,
+        recurring_event_id: e.recurring_event_id,
+      })),
+    };
+    return JSON.stringify(payload, null, 2);
+  }
+
+  async function copyExport() {
+    try {
+      await navigator.clipboard.writeText(buildExportJson());
+      setExportCopied(true);
+      setTimeout(() => setExportCopied(false), 2000);
+    } catch {
+      setExportCopied(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -219,6 +277,7 @@ export default function NowPage() {
             </button>
           )}
           <Button onClick={runSync} disabled={loading}>Sync</Button>
+          <Button variant="secondary" onClick={() => setShowExport(true)}>Export JSON</Button>
         </div>
       </div>
 
@@ -458,6 +517,32 @@ export default function NowPage() {
         onClose={() => setSelectedAction(null)}
         onSaved={load}
       />
+
+      {showExport && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 pt-16" onClick={() => setShowExport(false)}>
+          <div className="w-full max-w-2xl rounded-xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3">
+              <div className="text-sm font-semibold">Export planning JSON</div>
+              <div className="flex items-center gap-2">
+                <Button onClick={copyExport}>
+                  {exportCopied ? "Copied!" : "Copy to clipboard"}
+                </Button>
+                <button onClick={() => setShowExport(false)} className="rounded p-1 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <textarea
+              readOnly
+              value={buildExportJson()}
+              className="h-96 w-full resize-none rounded-b-xl bg-neutral-50 p-4 font-mono text-xs text-neutral-800 focus:outline-none"
+              onFocus={(e) => e.target.select()}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

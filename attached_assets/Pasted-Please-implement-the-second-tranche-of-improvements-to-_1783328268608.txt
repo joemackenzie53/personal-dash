@@ -1,0 +1,143 @@
+Please implement the second tranche of improvements to the Personal Dash app.
+
+Goal:
+Add two useful but contained features without redesigning the app or changing the core task model.
+
+Scope for this tranche:
+
+1. Project update/archive/delete UI
+2. Simple JSON export for ChatGPT daily planning
+
+Important constraints:
+
+* Keep this focused and cost-efficient.
+* Do not do a full redesign.
+* Do not add new dependencies unless absolutely necessary.
+* Do not implement recurring actions.
+* Do not implement multi-select.
+* Do not redesign the Now page.
+* Do not change the start date / due date model.
+* Do not implement snooze yet.
+* Avoid risky database migrations.
+* Reuse existing API/client/helper patterns.
+* Keep the UI compact and mobile-friendly.
+
+Before changing code:
+
+* Inspect only the relevant files.
+* Identify the smallest set of files that need changes.
+* Check whether the backend already supports project update/delete/archive before creating any new API route.
+
+Feature 1: Project update/archive/delete UI
+
+Context:
+Projects already exist in the app and are shown on the Projects page. The app has project statuses including active/done/archived. Projects can have linked actions.
+
+Please add UI so that projects can be:
+
+* Edited
+* Archived
+* Deleted
+
+Requirements:
+
+* Prefer “Archive” as the safer primary removal action.
+* Archive should set the project status to archived if that is already how the app represents archived projects.
+* Delete should require confirmation.
+* Editing should allow at least:
+
+  * name
+  * status
+  * priority
+  * target date
+  * description
+  * tags if already supported in the existing UI/data model
+  * drive folder URL / key document URLs only if these are already easy to surface
+* Do not overbuild a complex project management UI.
+* Keep the project list usable on mobile.
+* Avoid hiding important actions behind hover-only controls, because this is used on phone.
+
+Acceptance criteria:
+
+* I can edit an existing project from the Projects page.
+* I can archive an existing project from the Projects page.
+* I can delete an existing project from the Projects page, but only after a confirmation.
+* Archived projects should no longer clutter the default active-projects view, unless the current page already intentionally shows archived items.
+* Existing project-linked actions should not break.
+
+Feature 2: Simple JSON export for ChatGPT daily planning
+
+Context:
+I want to be able to export today’s relevant actions and upcoming calendar items, then paste them into ChatGPT so it can help produce a plan for the day.
+
+Please add a simple export mechanism.
+
+Preferred implementation:
+
+* Add a button on the Now page called something like “Export planning JSON”.
+* The button can either:
+
+  * copy JSON to clipboard, or
+  * open a modal/textarea with the JSON ready to copy, or
+  * download a .json file
+* Choose the simplest robust option given the current codebase.
+
+JSON should include:
+
+* Generated/export timestamp.
+* Open actions relevant to the Now page.
+* Upcoming events shown on the Now page.
+
+For actions, include useful fields where available:
+
+* id
+* title
+* status
+* priority
+* due_at
+* start_at
+* snooze_until
+* parent_type
+* parent_id
+* reference_url
+* description
+* tags
+* checklist
+* generated_from_action_id
+* due_days_before
+
+For events, include useful fields where available:
+
+* event id/key
+* title
+* start
+* end
+* all_day
+* category
+* is_major
+* project_id
+* notes_url
+* location
+* recurring_event_id
+
+Important:
+
+* Do not include OAuth tokens, refresh tokens, access tokens, cookies, APP_PASSWORD, SESSION_SECRET, DATABASE_URL, or any environment variables.
+* Do not include private config that is not needed for planning.
+* Do not create a complicated export settings system.
+* Do not build Google Calendar export or external integration.
+* This is just to help me paste useful planning context into ChatGPT.
+
+Acceptance criteria:
+
+* From the Now page, I can export/copy a JSON object containing today-relevant actions and upcoming Now-page events.
+* The JSON is valid.
+* The JSON does not include secrets.
+* The feature works on mobile.
+
+After changing code:
+
+* Summarise exactly which files were changed.
+* Summarise what behaviour was added.
+* Mention any manual testing steps.
+* If any part turns out to require a much larger change than expected, stop and explain rather than expanding the scope.

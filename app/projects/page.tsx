@@ -200,6 +200,10 @@ export default function ProjectsPage() {
   const [err, setErr] = React.useState<string | null>(null);
   const [selectedAction, setSelectedAction] = React.useState<ActionDetailRow | null>(null);
   const [actionReloadKey, setActionReloadKey] = React.useState(0);
+  const [editingId, setEditingId] = React.useState<string | null>(null);
+  const [editFields, setEditFields] = React.useState({
+    name: "", status: "active", priority: "med", targetDate: "", description: "", driveUrl: ""
+  });
 
   const [name, setName] = React.useState("");
   const [priority, setPriority] = React.useState("med");
@@ -242,6 +246,64 @@ export default function ProjectsPage() {
       await load();
     } catch (e: any) {
       setErr(e?.message || "Create failed");
+    }
+  }
+
+  function startEdit(p: Project) {
+    setEditingId(p.id);
+    setEditFields({
+      name: p.name,
+      status: p.status,
+      priority: p.priority,
+      targetDate: p.target_date ? p.target_date.substring(0, 10) : "",
+      description: p.description || "",
+      driveUrl: p.drive_folder_url || "",
+    });
+  }
+
+  async function saveEdit() {
+    if (!editingId) return;
+    setErr(null);
+    try {
+      await api(`/api/projects/${editingId}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          name: editFields.name.trim(),
+          status: editFields.status,
+          priority: editFields.priority,
+          targetDate: editFields.targetDate || null,
+          description: editFields.description.trim() || null,
+          driveFolderUrl: editFields.driveUrl.trim() || null,
+        }),
+      });
+      setEditingId(null);
+      await load();
+    } catch (e: any) {
+      setErr(e?.message || "Update failed");
+    }
+  }
+
+  async function archiveProject(id: string) {
+    setErr(null);
+    try {
+      await api(`/api/projects/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({ status: "archived" }),
+      });
+      await load();
+    } catch (e: any) {
+      setErr(e?.message || "Archive failed");
+    }
+  }
+
+  async function deleteProject(id: string) {
+    if (!window.confirm("Delete this project? This cannot be undone. Linked actions will remain.")) return;
+    setErr(null);
+    try {
+      await api(`/api/projects/${id}`, { method: "DELETE" });
+      await load();
+    } catch (e: any) {
+      setErr(e?.message || "Delete failed");
     }
   }
 
@@ -311,6 +373,11 @@ export default function ProjectsPage() {
                   <div className="text-sm font-semibold">{p.name}</div>
                   <div className="mt-1 flex flex-wrap gap-2">
                     <Badge>{p.priority}</Badge>
+                    {p.target_date && (
+                      <span className="inline-flex items-center rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-medium text-neutral-600">
+                        {fmtDate(p.target_date)}
+                      </span>
+                    )}
                     {p.action_total > 0 && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-medium text-neutral-600">
                         <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
@@ -327,10 +394,60 @@ export default function ProjectsPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              {p.description ? <div className="text-sm text-neutral-700">{p.description}</div> : <div className="text-sm text-neutral-500">No description.</div>}
-              <ProjectActions projectId={p.id} reloadKey={actionReloadKey} onSelectAction={(a) => {
-                setSelectedAction({ ...a, description: a.description || null, parent_type: "project", parent_id: p.id, parent_name: p.name });
-              }} />
+              {editingId === p.id ? (
+                <div className="space-y-2">
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <div className="space-y-1 sm:col-span-2">
+                      <div className="text-xs font-medium text-neutral-600">Name</div>
+                      <Input value={editFields.name} onChange={(e) => setEditFields((f) => ({ ...f, name: e.target.value }))} />
+                    </div>
+                    <div className="space-y-1">
+                      <div className="text-xs font-medium text-neutral-600">Status</div>
+                      <Select value={editFields.status} onChange={(e) => setEditFields((f) => ({ ...f, status: e.target.value }))}>
+                        <option value="active">active</option>
+                        <option value="done">done</option>
+                        <option value="archived">archived</option>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="text-xs font-medium text-neutral-600">Priority</div>
+                      <Select value={editFields.priority} onChange={(e) => setEditFields((f) => ({ ...f, priority: e.target.value }))}>
+                        <option value="high">high</option>
+                        <option value="med">med</option>
+                        <option value="low">low</option>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="text-xs font-medium text-neutral-600">Target date</div>
+                      <Input type="date" value={editFields.targetDate} onChange={(e) => setEditFields((f) => ({ ...f, targetDate: e.target.value }))} />
+                    </div>
+                    <div className="space-y-1">
+                      <div className="text-xs font-medium text-neutral-600">Drive folder URL</div>
+                      <Input value={editFields.driveUrl} onChange={(e) => setEditFields((f) => ({ ...f, driveUrl: e.target.value }))} placeholder="https://..." />
+                    </div>
+                    <div className="space-y-1 sm:col-span-2">
+                      <div className="text-xs font-medium text-neutral-600">Description</div>
+                      <Textarea value={editFields.description} onChange={(e) => setEditFields((f) => ({ ...f, description: e.target.value }))} rows={3} />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button onClick={saveEdit} disabled={!editFields.name.trim()}>Save</Button>
+                    <Button variant="secondary" onClick={() => setEditingId(null)}>Cancel</Button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {p.description ? <div className="text-sm text-neutral-700">{p.description}</div> : <div className="text-sm text-neutral-500">No description.</div>}
+                  <ProjectActions projectId={p.id} reloadKey={actionReloadKey} onSelectAction={(a) => {
+                    setSelectedAction({ ...a, description: a.description || null, parent_type: "project", parent_id: p.id, parent_name: p.name });
+                  }} />
+                  <div className="flex gap-3 border-t border-neutral-100 pt-3">
+                    <button onClick={() => startEdit(p)} className="text-xs font-medium text-neutral-600 underline hover:text-neutral-900">Edit</button>
+                    <button onClick={() => archiveProject(p.id)} className="text-xs font-medium text-neutral-600 underline hover:text-neutral-900">Archive</button>
+                    <button onClick={() => deleteProject(p.id)} className="text-xs font-medium text-red-500 underline hover:text-red-700">Delete</button>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         ))}
