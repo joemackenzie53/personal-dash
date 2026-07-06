@@ -12,6 +12,8 @@ type ActionRow = {
   status: string;
   priority: string;
   due_at: string | null;
+  start_at: string | null;
+  snooze_until: string | null;
   description: string | null;
   parent_type: string | null;
   parent_id: string | null;
@@ -37,12 +39,26 @@ function toDateInput(iso: string | null): string {
   return d.toISOString().slice(0, 10);
 }
 
+function tomorrowStr(): string {
+  const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10);
+}
+function nextSatStr(): string {
+  const d = new Date(); const day = d.getDay();
+  d.setDate(d.getDate() + (day === 6 ? 7 : 6 - day)); return d.toISOString().slice(0, 10);
+}
+function nextMonStr(): string {
+  const d = new Date(); const day = d.getDay();
+  d.setDate(d.getDate() + (day === 1 ? 7 : (8 - day) % 7)); return d.toISOString().slice(0, 10);
+}
+
 export function ActionDetailModal({ action, projects, events, onClose, onSaved }: Props) {
   const [title, setTitle] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [status, setStatus] = React.useState("open");
   const [priority, setPriority] = React.useState("med");
   const [dueAt, setDueAt] = React.useState("");
+  const [startAt, setStartAt] = React.useState("");
+  const [snoozeUntil, setSnoozeUntil] = React.useState("");
   const [parent, setParent] = React.useState("");
   const [saving, setSaving] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
@@ -56,6 +72,8 @@ export function ActionDetailModal({ action, projects, events, onClose, onSaved }
       setStatus(action.status);
       setPriority(action.priority || "med");
       setDueAt(toDateInput(action.due_at));
+      setStartAt(toDateInput(action.start_at));
+      setSnoozeUntil(toDateInput(action.snooze_until));
       if (action.parent_type && action.parent_id) {
         setParent(`${action.parent_type}:${action.parent_id}`);
       } else {
@@ -88,6 +106,8 @@ export function ActionDetailModal({ action, projects, events, onClose, onSaved }
           status,
           priority,
           dueAt: dueAt ? new Date(dueAt).toISOString() : null,
+          startAt: startAt ? new Date(startAt).toISOString() : null,
+          snoozeUntil: snoozeUntil ? new Date(snoozeUntil).toISOString() : null,
           parentType,
           parentId,
         }),
@@ -180,13 +200,44 @@ export function ActionDetailModal({ action, projects, events, onClose, onSaved }
             </div>
           </div>
 
-          <div className="space-y-1">
-            <div className="text-xs font-medium text-neutral-600">Due date</div>
-            <Input
-              type="date"
-              value={dueAt}
-              onChange={(e) => setDueAt(e.target.value)}
-            />
+          <div className="space-y-2 rounded-lg border border-neutral-200 bg-neutral-50 p-3">
+            <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Schedule</div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <div className="text-xs font-medium text-neutral-500">Start date</div>
+                <div className="flex items-center gap-1">
+                  <Input type="date" value={startAt} onChange={(e) => setStartAt(e.target.value)} className="text-xs" />
+                  {startAt && <button type="button" onClick={() => setStartAt("")} className="shrink-0 px-1 text-base leading-none text-neutral-400 hover:text-neutral-700">×</button>}
+                </div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-xs font-medium text-neutral-500">Due date</div>
+                <div className="flex items-center gap-1">
+                  <Input type="date" value={dueAt} onChange={(e) => setDueAt(e.target.value)} className="text-xs" />
+                  {dueAt && <button type="button" onClick={() => setDueAt("")} className="shrink-0 px-1 text-base leading-none text-neutral-400 hover:text-neutral-700">×</button>}
+                </div>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <div className="text-xs font-medium text-neutral-500">Snooze until</div>
+              <div className="flex items-center gap-1">
+                <Input type="date" value={snoozeUntil} onChange={(e) => setSnoozeUntil(e.target.value)} className="flex-1 text-xs" />
+                {snoozeUntil && <button type="button" onClick={() => setSnoozeUntil("")} className="shrink-0 px-1 text-base leading-none text-neutral-400 hover:text-neutral-700">×</button>}
+              </div>
+              <div className="flex flex-wrap gap-1 pt-0.5">
+                {(["Tomorrow", "Saturday", "Next week"] as const).map((label) => {
+                  const val = label === "Tomorrow" ? tomorrowStr() : label === "Saturday" ? nextSatStr() : nextMonStr();
+                  return (
+                    <button key={label} type="button" onClick={() => setSnoozeUntil(val)}
+                      className="rounded bg-neutral-200 px-2 py-0.5 text-xs font-medium text-neutral-700 hover:bg-neutral-300">{label}</button>
+                  );
+                })}
+                {snoozeUntil && (
+                  <button type="button" onClick={() => setSnoozeUntil("")}
+                    className="rounded bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-500 hover:bg-neutral-200">Clear</button>
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="space-y-1">

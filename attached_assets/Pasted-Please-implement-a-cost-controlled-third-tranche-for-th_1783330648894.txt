@@ -1,0 +1,203 @@
+Please implement a cost-controlled third tranche for the Personal Dash app.
+
+Goal:
+Improve mobile action management without doing a full redesign. The app is used heavily on a phone, so preserve the current clean card-based mobile UI.
+
+Important context:
+The current mobile UI uses simple cards, large tap targets, bottom navigation, date/priority pills, and a left-side completion circle on action rows. Please keep that design language. Do not add lots of buttons to each row.
+
+Important constraints:
+
+* Do not work on the sync button in this tranche.
+* Do not implement recurring actions.
+* Do not implement drag-and-drop/manual ranking.
+* Do not redesign the app.
+* Do not add new dependencies unless absolutely necessary.
+* Do not change the database schema unless you confirm the required columns are actually missing.
+* The app already has `start_at` and `snooze_until` columns on actions according to the existing schema, so prefer surfacing existing fields rather than adding new ones.
+* Avoid broad refactors.
+* Reuse existing API/client/helper patterns.
+* Keep the implementation simple and mobile-friendly.
+
+Please implement these features in this order:
+
+1. Surface start date, due date, and snooze in the action modal
+2. Update Now/Actions visibility and labels based on start/snooze/due
+3. Add multi-select bulk editing on the Actions page only
+
+Do not implement bulk-select on the Now page yet unless it is trivial after doing the Actions page. The Actions page is the main backlog-management surface.
+
+Feature 1: Start date, due date, and snooze in the action modal
+
+Context:
+Actions already have:
+
+* `due_at`
+* `start_at`
+* `snooze_until`
+
+Desired meaning:
+
+* `start_at` = when this action should first become active/visible in the Now workflow.
+* `due_at` = deadline/urgency date.
+* `snooze_until` = temporarily hide from Now until later.
+* Actions do not need to have due dates.
+* Undated actions are allowed.
+
+Please update the action create/edit experience so I can set:
+
+* start date
+* due date
+* snooze until
+
+Implementation guidance:
+
+* Prefer adding a compact “Schedule” section inside the existing ActionDetailModal.
+* Use native date inputs if that is simplest.
+* Do not overbuild custom date pickers.
+* Keep the modal mobile-friendly.
+* Add a way to clear each field.
+* If action creation forms on Now/Actions are meant to stay lightweight, it is okay for quick-add to remain simple and for full scheduling to happen in the modal.
+
+Snooze quick options:
+Inside the modal, add simple quick snooze options if easy:
+
+* Tomorrow
+* Saturday / this weekend
+* Next week
+* Clear snooze
+
+If these are not easy, a simple `snooze_until` date field plus clear button is enough.
+
+Acceptance criteria:
+
+* I can edit an action and set start date.
+* I can edit an action and set due date.
+* I can edit an action and set snooze until.
+* I can clear start date, due date, and snooze.
+* The modal remains usable on mobile.
+
+Feature 2: Now/Actions visibility and labels
+
+Please update action display logic as follows.
+
+Now page:
+
+* Do not show actions in the active Now queue if `snooze_until` is in the future.
+* Do not show actions in the active Now queue if `start_at` is in the future, unless they are already due/overdue.
+* Due/overdue actions should still appear and look urgent.
+* Due soon actions should still appear in the due-soon section.
+* Started actions with no due date may appear as available/active, but should not look red/overdue.
+* Actions without due date and without start date are allowed, but should not dominate the main daily workflow.
+
+Actions page:
+
+* Show all open actions as before, but add compact labels where useful:
+
+  * due date badge, using existing visual style
+  * priority badge, using existing visual style
+  * “starts [date]” if start_at exists and is relevant
+  * “snoozed until [date]” if snooze_until exists and is in the future
+* Snoozed actions should remain findable on the Actions page.
+* Future-start actions should remain findable on the Actions page.
+
+Visual guidance:
+
+* Keep action cards basically the same.
+* Do not add a row of buttons to every action card.
+* Keep the left completion circle.
+* Keep date/priority pills compact.
+* Use subtle grey-style chips for start/snooze labels.
+* Preserve the current red/amber urgency language for due dates.
+
+Acceptance criteria:
+
+* Snoozed actions disappear from Now until the snooze date.
+* Future-start actions do not clutter Now before their start date.
+* Due and overdue actions still surface correctly.
+* Actions page still lets me see everything.
+* Start/snooze states are understandable from the Actions page.
+
+Feature 3: Multi-select bulk editing on Actions page only
+
+Context:
+The Actions page currently has many open actions. I need to move/update several at once, especially when catching up.
+
+Please add a minimal mobile-friendly bulk-select mode to the Actions page.
+
+Desired mobile pattern:
+
+* Add a “Select” button near the Open actions header.
+* When Select is tapped:
+
+  * action rows enter selection mode
+  * the left-side circle acts as a selection checkbox instead of marking the action done
+  * selected rows are visually indicated
+  * show a selected count
+  * show a sticky bottom bulk-action bar above the existing bottom nav
+* Include a Cancel button to exit selection mode.
+* Avoid hover-only controls.
+* Avoid drag-and-drop.
+
+Bulk actions needed:
+
+* Set due date
+* Set start date
+* Set priority
+* Mark done
+* Snooze until date
+* Clear snooze if easy
+
+Implementation guidance:
+
+* Prefer reusing the existing single-action update endpoint with batched client calls if that is simpler and robust enough.
+* Only add a new batch endpoint if it is clearly simpler and contained.
+* Do not introduce complex optimistic updates unless the app already uses them.
+* After bulk update, refresh the action list.
+* Keep the sticky bar compact on mobile.
+* The sticky bar should not be hidden behind the bottom navigation.
+
+Acceptance criteria:
+
+* On the Actions page, I can enter select mode.
+* I can select multiple actions on mobile.
+* I can bulk set their due date.
+* I can bulk set their start date.
+* I can bulk change priority.
+* I can bulk mark them done.
+* I can bulk snooze them.
+* I can cancel select mode.
+* Existing one-by-one action completion still works when not in select mode.
+
+Cost-control instructions:
+
+* First inspect the smallest relevant set of files only.
+* Likely relevant files include:
+
+  * app/actions/page.tsx
+  * app/now/page.tsx
+  * components/ActionDetailModal.tsx
+  * app/api/actions/route.ts
+  * app/api/actions/[id]/route.ts
+  * any shared action/date helpers if they already exist
+* Do not touch Projects, Horizon, Settings, Google sync, auth, or calendar sync unless absolutely necessary.
+* If any part requires a large refactor, stop and explain rather than expanding scope.
+* If implementing all three features is too large, prioritise:
+
+  1. Action modal scheduling fields
+  2. Now/Actions visibility for snooze/start
+  3. Actions page bulk-select
+
+After changing code:
+
+* Summarise exactly which files were changed.
+* Explain the new behaviour.
+* Explain any limitations.
+* Give manual test steps for:
+
+  * setting start date
+  * setting due date
+  * snoozing and clearing snooze
+  * checking Now visibility
+  * bulk moving several actions to a new due date
+  * bulk marking actions done

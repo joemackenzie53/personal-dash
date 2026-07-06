@@ -177,10 +177,19 @@ export default function NowPage() {
 
   const todayStart = startOfDay(new Date());
   const tomorrowStart = addDays(todayStart, 1);
-  const pastDue = actions.filter((a) => a.due_at && new Date(a.due_at) < todayStart);
-  const overdue = sortByPriority(actions.filter((a) => a.due_at && new Date(a.due_at) < tomorrowStart));
-  const dueSoon = sortByPriority(actions.filter((a) => a.due_at && new Date(a.due_at) >= tomorrowStart && new Date(a.due_at) <= addDays(todayStart, 4)));
-  const unscheduled = sortByPriority(actions.filter((a) => !a.due_at));
+  const nowTs = new Date();
+
+  // Exclude snoozed actions; exclude future-start actions unless already due/overdue
+  const visibleActions = actions.filter((a) => {
+    if (a.snooze_until && new Date(a.snooze_until) > nowTs) return false;
+    if (a.start_at && new Date(a.start_at) > nowTs && !(a.due_at && new Date(a.due_at) < tomorrowStart)) return false;
+    return true;
+  });
+
+  const pastDue = visibleActions.filter((a) => a.due_at && new Date(a.due_at) < todayStart);
+  const overdue = sortByPriority(visibleActions.filter((a) => a.due_at && new Date(a.due_at) < tomorrowStart));
+  const dueSoon = sortByPriority(visibleActions.filter((a) => a.due_at && new Date(a.due_at) >= tomorrowStart && new Date(a.due_at) <= addDays(todayStart, 4)));
+  const unscheduled = sortByPriority(visibleActions.filter((a) => !a.due_at));
 
   const projectMap = React.useMemo(() => {
     const m: Record<string, string> = {};

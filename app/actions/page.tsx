@@ -20,6 +20,8 @@ type ActionRow = {
   status: string;
   priority: string;
   due_at: string | null;
+  start_at: string | null;
+  snooze_until: string | null;
   description: string | null;
   parent_type: string | null;
   parent_id: string | null;
@@ -53,6 +55,10 @@ export default function ActionsPage() {
   const [err, setErr] = React.useState<string | null>(null);
   const [selectedAction, setSelectedAction] = React.useState<ActionRow | null>(null);
   const [showDone, setShowDone] = React.useState(false);
+  const [selectMode, setSelectMode] = React.useState(false);
+  const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
+  const [bulkPanel, setBulkPanel] = React.useState<"due" | "start" | "priority" | "snooze" | null>(null);
+  const [bulkValue, setBulkValue] = React.useState("");
 
   const [newTitle, setNewTitle] = React.useState("");
   const [newDue, setNewDue] = React.useState("");
@@ -126,6 +132,42 @@ export default function ActionsPage() {
     return null;
   }
 
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  }
+
+  function enterSelectMode() {
+    setSelectMode(true); setSelectedIds(new Set()); setBulkPanel(null); setBulkValue("");
+  }
+
+  function exitSelectMode() {
+    setSelectMode(false); setSelectedIds(new Set()); setBulkPanel(null); setBulkValue("");
+  }
+
+  function pickPanel(p: "due" | "start" | "priority" | "snooze") {
+    setBulkPanel((prev) => (prev === p ? null : p)); setBulkValue("");
+  }
+
+  async function applyBulk(updates: Record<string, unknown>) {
+    if (!selectedIds.size) return;
+    setErr(null);
+    try {
+      await Promise.all(
+        Array.from(selectedIds).map((id) =>
+          api(`/api/actions/${id}`, { method: "PUT", body: JSON.stringify(updates) })
+        )
+      );
+      exitSelectMode();
+      await load();
+    } catch (e: any) {
+      setErr(e?.message || "Bulk update failed");
+    }
+  }
+
+  function bsTomorrow() { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10); }
+  function bsNextSat() { const d = new Date(); const day = d.getDay(); d.setDate(d.getDate() + (day === 6 ? 7 : 6 - day)); return d.toISOString().slice(0, 10); }
+  function bsNextMon() { const d = new Date(); const day = d.getDay(); d.setDate(d.getDate() + (day === 1 ? 7 : (8 - day) % 7)); return d.toISOString().slice(0, 10); }
+
   async function toggleAction(e: React.MouseEvent, actionId: string, newStatus: string) {
     e.stopPropagation();
     try {
@@ -154,20 +196,29 @@ export default function ActionsPage() {
 
   function renderActionRow(a: ActionRow, tone?: "red" | "amber") {
     const isDone = a.status === "done";
+    const isSelected = selectMode && selectedIds.has(a.id);
+    const nowD = new Date();
     return (
       <li
         key={a.id}
-        className="cursor-pointer rounded-lg border border-neutral-200 px-3 py-2 hover:bg-neutral-50"
-        onClick={() => setSelectedAction(a)}
+        className={`cursor-pointer rounded-lg border px-3 py-2 transition-colors ${isSelected ? "border-blue-300 bg-blue-50" : "border-neutral-200 hover:bg-neutral-50"}`}
+        onClick={() => selectMode ? toggleSelect(a.id) : setSelectedAction(a)}
       >
         <div className="flex items-start gap-2">
           <button
-            onClick={(e) => toggleAction(e, a.id, isDone ? "open" : "done")}
-            className="-ml-1 flex-shrink-0 p-1.5 rounded-full hover:bg-green-50 transition-colors"
-            aria-label={isDone ? "Reopen action" : "Complete action"}
+            onClick={(e) => { e.stopPropagation(); selectMode ? toggleSelect(a.id) : toggleAction(e, a.id, isDone ? "open" : "done"); }}
+            className="-ml-1 flex-shrink-0 p-1.5 rounded-full transition-colors hover:bg-blue-50"
+            aria-label={selectMode ? (isSelected ? "Deselect" : "Select") : (isDone ? "Reopen" : "Complete")}
           >
-            <span className={`flex items-center justify-center h-[18px] w-[18px] rounded-full border-2 transition-colors ${isDone ? "border-green-500 bg-green-500" : "border-neutral-400 hover:border-green-500"}`}>
-              {isDone && (
+            <span className={`flex items-center justify-center h-[18px] w-[18px] rounded-full border-2 transition-colors ${
+              selectMode
+                ? (isSelected ? "border-blue-500 bg-blue-500" : "border-neutral-300 hover:border-blue-400")
+                : (isDone ? "border-green-500 bg-green-500" : "border-neutral-400 hover:border-green-500")
+            }`}>
+              {(isDone && !selectMode) && (
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              )}
+              {isSelected && (
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
               )}
             </span>
@@ -178,8 +229,8 @@ export default function ActionsPage() {
               {a.priority === "high" && !isDone && <Badge tone="red">high</Badge>}
               {a.priority === "low" && !isDone && <Badge tone="neutral">low</Badge>}
             </div>
-            <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-neutral-600">
-              {a.due_at && <span>{fmtDate(a.due_at)}</span>}
+            <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-neutral-500">
+              {a.due_at && <span className="text-neutral-600">{fmtDate(a.due_at)}</span>}
               {parentLabel(a) && (
                 <span className="inline-flex items-center gap-1 rounded bg-neutral-200/60 px-1.5 py-0.5 text-neutral-600">
                   {a.parent_type === "project" ? (
@@ -190,9 +241,15 @@ export default function ActionsPage() {
                   {parentLabel(a)}
                 </span>
               )}
+              {!isDone && a.start_at && new Date(a.start_at) > nowD && (
+                <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-neutral-500">starts {fmtDate(a.start_at)}</span>
+              )}
+              {!isDone && a.snooze_until && new Date(a.snooze_until) > nowD && (
+                <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-neutral-500">snoozed {fmtDate(a.snooze_until)}</span>
+              )}
             </div>
           </div>
-          {a.due_at && tone && <Badge tone={tone}>{fmtDate(a.due_at)}</Badge>}
+          {a.due_at && tone && !selectMode && <Badge tone={tone}>{fmtDate(a.due_at)}</Badge>}
         </div>
       </li>
     );
@@ -255,9 +312,15 @@ export default function ActionsPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <div className="text-sm font-semibold">Open actions</div>
-            <div className="text-xs text-neutral-500">{open.length} total</div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-neutral-500">{open.length} total</span>
+              {!selectMode
+                ? <button onClick={enterSelectMode} className="rounded-lg border border-neutral-200 px-2.5 py-1 text-xs font-medium text-neutral-600 hover:bg-neutral-50">Select</button>
+                : <button onClick={exitSelectMode} className="rounded-lg border border-neutral-200 px-2.5 py-1 text-xs font-medium text-neutral-600 hover:bg-neutral-50">Cancel</button>
+              }
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -340,6 +403,65 @@ export default function ActionsPage() {
         onClose={() => setSelectedAction(null)}
         onSaved={load}
       />
+
+      {selectMode && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-neutral-200 bg-white shadow-[0_-2px_8px_rgba(0,0,0,0.08)]">
+          <div className="mx-auto max-w-5xl space-y-2 px-4 py-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-neutral-800">
+                {selectedIds.size} selected
+              </span>
+              <button onClick={exitSelectMode} className="text-xs font-medium text-neutral-500 underline hover:text-neutral-800">Cancel</button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {(["due", "start", "priority", "snooze"] as const).map((p) => (
+                <button key={p} onClick={() => pickPanel(p)}
+                  className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${bulkPanel === p ? "border-blue-300 bg-blue-50 text-blue-700" : "border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50"}`}>
+                  {p === "due" ? "Due date" : p === "start" ? "Start date" : p === "priority" ? "Priority" : "Snooze"}
+                </button>
+              ))}
+              <button onClick={() => applyBulk({ status: "done" })} disabled={!selectedIds.size}
+                className="rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">
+                Mark done
+              </button>
+            </div>
+            {(bulkPanel === "due" || bulkPanel === "start") && (
+              <div className="flex items-center gap-2">
+                <Input type="date" value={bulkValue} onChange={(e) => setBulkValue(e.target.value)} className="text-sm" />
+                <Button size="sm" onClick={() => bulkValue && applyBulk(bulkPanel === "due" ? { dueAt: new Date(bulkValue).toISOString() } : { startAt: new Date(bulkValue).toISOString() })} disabled={!bulkValue || !selectedIds.size}>Set</Button>
+                {bulkPanel === "due" && <button onClick={() => applyBulk({ dueAt: null })} disabled={!selectedIds.size} className="text-xs text-neutral-500 underline hover:text-neutral-800 disabled:opacity-40">Clear</button>}
+              </div>
+            )}
+            {bulkPanel === "priority" && (
+              <div className="flex items-center gap-2">
+                <Select value={bulkValue} onChange={(e) => setBulkValue(e.target.value)} className="text-sm">
+                  <option value="">Pick…</option>
+                  <option value="high">High</option>
+                  <option value="med">Medium</option>
+                  <option value="low">Low</option>
+                </Select>
+                <Button size="sm" onClick={() => bulkValue && applyBulk({ priority: bulkValue })} disabled={!bulkValue || !selectedIds.size}>Set</Button>
+              </div>
+            )}
+            {bulkPanel === "snooze" && (
+              <div className="space-y-1.5">
+                <div className="flex flex-wrap gap-1.5">
+                  {([["Tomorrow", bsTomorrow()], ["Saturday", bsNextSat()], ["Next week", bsNextMon()]] as [string, string][]).map(([label, val]) => (
+                    <button key={label} onClick={() => applyBulk({ snoozeUntil: new Date(val).toISOString() })} disabled={!selectedIds.size}
+                      className="rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">{label}</button>
+                  ))}
+                  <button onClick={() => applyBulk({ snoozeUntil: null })} disabled={!selectedIds.size}
+                    className="rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-500 hover:bg-neutral-50 disabled:opacity-40">Clear snooze</button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input type="date" value={bulkValue} onChange={(e) => setBulkValue(e.target.value)} className="text-sm" />
+                  <Button size="sm" onClick={() => bulkValue && applyBulk({ snoozeUntil: new Date(bulkValue).toISOString() })} disabled={!bulkValue || !selectedIds.size}>Set</Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
