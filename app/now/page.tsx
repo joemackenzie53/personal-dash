@@ -161,12 +161,17 @@ export default function NowPage() {
     } catch {}
   }
 
+  const PRIORITY_ORDER: Record<string, number> = { high: 0, med: 1, low: 2 };
+  function sortByPriority<T extends { priority: string }>(arr: T[]): T[] {
+    return [...arr].sort((a, b) => (PRIORITY_ORDER[a.priority] ?? 3) - (PRIORITY_ORDER[b.priority] ?? 3));
+  }
+
   const todayStart = startOfDay(new Date());
   const tomorrowStart = addDays(todayStart, 1);
   const pastDue = actions.filter((a) => a.due_at && new Date(a.due_at) < todayStart);
-  const overdue = actions.filter((a) => a.due_at && new Date(a.due_at) < tomorrowStart);
-  const dueSoon = actions.filter((a) => a.due_at && new Date(a.due_at) >= tomorrowStart && new Date(a.due_at) <= addDays(todayStart, 4));
-  const unscheduled = actions.filter((a) => !a.due_at);
+  const overdue = sortByPriority(actions.filter((a) => a.due_at && new Date(a.due_at) < tomorrowStart));
+  const dueSoon = sortByPriority(actions.filter((a) => a.due_at && new Date(a.due_at) >= tomorrowStart && new Date(a.due_at) <= addDays(todayStart, 4)));
+  const unscheduled = sortByPriority(actions.filter((a) => !a.due_at));
 
   const projectMap = React.useMemo(() => {
     const m: Record<string, string> = {};

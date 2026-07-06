@@ -50,6 +50,7 @@ export default function LoginPage() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
             placeholder="Password"
           />
           <Button onClick={submit} disabled={loading}>Log in</Button>

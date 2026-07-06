@@ -1,0 +1,71 @@
+Please implement a very small, low-risk first tranche of improvements to the Personal Dash app.
+
+Goal:
+Improve daily usability without redesigning the app, changing the database schema, adding new libraries, or doing broad refactors. Please keep this patch minimal and cost-efficient.
+
+Important constraints:
+
+* Do not do a full redesign.
+* Do not add new dependencies.
+* Do not change the database schema.
+* Do not implement recurring actions.
+* Do not implement multi-select.
+* Do not implement JSON export yet.
+* Do not change the start date / due date model yet.
+* Do not refactor unrelated code.
+* Reuse existing API/client/helper patterns.
+* Keep the mobile UI compact and usable.
+
+Please implement only these three improvements:
+
+1. Google Calendar sync button feedback
+
+* On the Settings page, when the sync button is clicked, show a loading state while sync is running.
+* Disable the button while sync is running.
+* Show a clear success message when sync finishes.
+* Show a clear error message if sync fails.
+* Do not silently fail.
+* Keep the UI simple. A small status message near the button is enough.
+
+Acceptance criteria:
+
+* User can tell when sync is in progress.
+* User can tell whether sync succeeded or failed.
+* Button cannot be clicked repeatedly while sync is running.
+
+2. Password login Enter key
+
+* On the login page, allow the user to press Enter after typing the password to submit the form.
+* Preserve the existing button-click behaviour.
+* Do not redesign the login page.
+
+Acceptance criteria:
+
+* Typing the password and pressing Enter logs in exactly as clicking the button would.
+
+3. Basic action priority sorting
+
+* Actions already have priority: high, med, low.
+* Within each existing action group/list, sort actions by priority after the existing date/status grouping logic.
+* Priority order should be: high, med, low, then missing/unknown.
+* Preserve the existing page structure and grouping.
+* Do not add drag-and-drop or manual ranking.
+* Do not change the database.
+
+Acceptance criteria:
+
+* High-priority actions appear above medium-priority actions within the same existing group.
+* Medium-priority actions appear above low-priority actions within the same existing group.
+* Existing date/status groupings still work as before.
+
+Before changing code:
+
+* Briefly inspect the relevant files only.
+* Identify the smallest set of files that need changes.
+
+After changing code:
+
+* Summarise exactly which files were changed.
+* Summarise the behaviour added.
+* Mention any manual testing steps.
+* If you discover that any requested change requires a larger refactor or schema change, do not implement that part; explain why instead.

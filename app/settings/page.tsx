@@ -36,6 +36,8 @@ export default function SettingsPage() {
   const [categories, setCategories] = React.useState<CategoryRow[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
+  const [syncing, setSyncing] = React.useState(false);
+  const [syncMsg, setSyncMsg] = React.useState<string | null>(null);
   const [err, setErr] = React.useState<string | null>(null);
   const [msg, setMsg] = React.useState<string | null>(null);
 
@@ -103,17 +105,17 @@ export default function SettingsPage() {
   }
 
   async function sync() {
+    setSyncMsg(null);
     setErr(null);
-    setMsg(null);
-    setSaving(true);
+    setSyncing(true);
     try {
       const res = await api<any>("/api/sync", { method: "POST" });
-      setMsg(`Synced: ${res.calendarsSynced} calendars, ${res.eventsUpserted} events.`);
+      setSyncMsg(`Synced ${res.calendarsSynced} calendar${res.calendarsSynced !== 1 ? "s" : ""}, ${res.eventsUpserted} events.`);
       await load();
     } catch (e: any) {
-      setErr(e?.message || "Sync failed");
+      setSyncMsg(`Sync failed: ${e?.message || "unknown error"}`);
     } finally {
-      setSaving(false);
+      setSyncing(false);
     }
   }
 
@@ -222,15 +224,24 @@ export default function SettingsPage() {
               <span className="font-medium text-neutral-700">not connected</span>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-3">
             {!settings?.connected ? (
               <a href="/api/auth/google/start">
                 <Button>Connect</Button>
               </a>
             ) : (
               <>
-                <Button onClick={sync} disabled={saving}>Sync now</Button>
-                <Button variant="danger" onClick={disconnect} disabled={saving}>Disconnect</Button>
+                <div className="flex items-center gap-2">
+                  <Button onClick={sync} disabled={syncing || saving}>
+                    {syncing ? "Syncing…" : "Sync now"}
+                  </Button>
+                  <Button variant="danger" onClick={disconnect} disabled={syncing || saving}>Disconnect</Button>
+                </div>
+                {syncMsg && (
+                  <span className={`text-xs font-medium ${syncMsg.startsWith("Sync failed") ? "text-red-600" : "text-green-700"}`}>
+                    {syncMsg}
+                  </span>
+                )}
               </>
             )}
           </div>

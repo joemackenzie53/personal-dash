@@ -1,0 +1,81 @@
+Please produce a structured context summary of this Replit app for me to share with ChatGPT so it can help me plan improvements.
+
+The app is for my personal tracking, tasks, calendar, reminders, routines, and life admin — not for work. Please summarize the current state clearly enough that someone who has never seen the codebase can understand what it does, how it works, and what might be improved.
+
+Please include:
+
+1. Product purpose
+
+* What the app is for
+* The main user problems it solves
+* The intended daily/weekly usage pattern
+
+2. Current features
+
+* Main screens/pages
+* Core workflows
+* Task/to-do functionality
+* Calendar or scheduling functionality
+* Tracking functionality
+* Reminders, recurring items, routines, habits, notes, or logs
+* Any dashboards, summaries, reports, or prioritisation features
+
+3. Data model
+
+* Main entities/tables/collections
+* Important fields
+* Relationships between objects
+* How tasks, calendar items, recurring items, and tracking logs are represented
+* Any status fields, categories, tags, priorities, dates, or completion logic
+
+4. Technical architecture
+
+* Frontend framework and key files
+* Backend framework and key files
+* Database/storage approach
+* Authentication, if any
+* APIs, routes, server actions, or important functions
+* Third-party integrations, if any
+
+5. Current UX and information architecture
+
+* How the app is organised
+* Navigation structure
+* What the home/dashboard view shows
+* What feels smooth vs clunky
+* Any confusing parts or duplicated concepts
+
+6. Known problems and limitations
+
+* Bugs
+* Technical debt
+* Performance issues
+* Data model issues
+* UX issues
+* Missing edge cases
+* Things that are hard to change because of the current structure
+
+7. Improvement opportunities
+
+* Obvious product improvements
+* Obvious UX improvements
+* Obvious technical improvements
+* Better ways to handle recurring tasks, calendar items, reminders, habits, routines, priorities, and historical tracking
+* Anything that would make the app more useful as a personal operating system
+
+8. Current codebase map
+
+* Briefly list the most important files/folders and what each one does
+* Highlight where future changes are most likely to be made
+
+9. Questions for ChatGPT
+
+* Suggest 10–15 good questions or decisions that ChatGPT should help me think through before I start changing the app.
+
+Important:
+
+* Do not include API keys, passwords, tokens, private environment variables, or secrets.
+* Do not paste huge chunks of code unless a small excerpt is essential.
+* Be concrete and specific. Avoid vague descriptions like “the app manages tasks”; explain exactly how.
+* Structure the output with headings and bullet points.
+* Where something is uncertain, say so explicitly.

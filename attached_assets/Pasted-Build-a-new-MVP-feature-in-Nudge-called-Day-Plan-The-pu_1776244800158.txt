@@ -1,0 +1,325 @@
+Build a new MVP feature in Nudge called **Day Plan**.
+
+The purpose of this feature is to let me take the tasks shown on my **Today** page, send them to ChatGPT to get a proposed day plan, and then import that plan back into Nudge so I can execute my day in the right order.
+
+This is not meant to be a second task system. It is only an execution layer for today. It should reference existing tasks, not duplicate them.
+
+## What I want the flow to be
+
+First, in Nudge, I go to my Today page as usual.
+
+That page already contains:
+
+* chases
+* tasks
+* meetings and meeting agendas
+
+For this feature, I only want to export the **tasks** that appear on the **Today** page.
+
+I do **not** want to export chases.
+Chases should always be assumed to exist and to belong to the opening **control tower** section of the day.
+
+I do **not** want to export meetings or meeting agendas.
+If I need to prepare for a meeting, I will create a task for that and it will appear in the Today task list.
+
+I want to add a new page called **Day Plan**.
+
+I also want an export button from the Today page that exports the task list in a clean JSON format.
+
+I will copy that JSON into ChatGPT, along with any extra context such as:
+
+* work hours
+* whether I am in the office or at home
+* any urgent items not yet on the list
+* any preferences for how to structure the day
+
+ChatGPT will then return a proposed day plan in a JSON format that Nudge can import.
+
+Then, in Nudge, I go to the Day Plan page and import that JSON.
+
+The Day Plan page should render the proposed blocks for the day, for example:
+
+* 9:45–10:35 — UX prep
+* 10:35–10:50 — unblocker burst
+* 12:50–2:10 — Praxis / Unlimit
+
+Within each block, if the block contains existing tasks, it should show those tasks using the real task records from Nudge, not copied plain text. That means I should be able to tick them off there and have them sync across the rest of Nudge.
+
+The page should also support blocks that are not tied to tasks, such as:
+
+* buffer
+* lunch
+* prep
+* close-down
+* capture actions
+
+These non-task blocks do not need a complex block type system. They can just be a simple title-only block type.
+
+The page should also clearly show tasks that were deliberately not scheduled into any block.
+
+Keep this simple. This is an MVP.
+
+## Core principles
+
+This feature should be:
+
+* daily, not long-term
+* lightweight, not a full scheduling engine
+* easy to clear and re-import
+* based on existing tasks from the Today page
+* able to show unscheduled items
+* able to show simple non-task blocks
+
+It should not try to become a master planning system.
+
+## What I need built
+
+### 1. A JSON export from Today
+
+Add an export button on the Today page that exports all the task data needed for planning.
+
+The export format should be JSON.
+
+Use a structure like this:
+
+```json
+{
+  "date": "2026-04-15",
+  "work_hours": {
+    "start": "08:15",
+    "end": "18:00"
+  },
+  "location_context": "office",
+  "tasks": [
+    {
+      "id": "task_123",
+      "title": "Create the configuration for Unlimit gateway in Praxis - add the rules",
+      "area": "Payments",
+      "energy": "shallow",
+      "next_date": "2026-04-15",
+      "due_date": "2026-04-15",
+      "status": "open"
+    },
+    {
+      "id": "task_456",
+      "title": "Check the Dan TIN pop-up message results",
+      "area": "Onboarding",
+      "energy": "shallow",
+      "next_date": "2026-04-14",
+      "due_date": "2026-04-14",
+      "status": "open"
+    }
+  ]
+}
+```
+
+#### Notes on the export
+
+* Use real task IDs from Nudge
+* Include only the task items listed on the **Today** page
+* Keep the format easy to read and copy
+* If work hours or location context already exist in the app, include them; otherwise allow them to be blank or omitted
+* Do not include chases
+* Do not include meetings or meeting agendas
+
+### 2. A new Day Plan page
+
+Create a new page called **Day Plan**.
+
+This page should have:
+
+* an Import button
+* a Clear button
+* a rendered view of the imported plan
+
+The imported plan format should also be JSON.
+
+Use a structure like this:
+
+```json
+{
+  "date": "2026-04-15",
+  "blocks": [
+    {
+      "id": "block_1",
+      "start": "08:15",
+      "end": "08:35",
+      "label": "Control tower",
+      "block_kind": "title_only",
+      "task_ids": [],
+      "notes": [
+        "Do chases first",
+        "Clear urgent blockers",
+        "Do not get stuck in admin"
+      ]
+    },
+    {
+      "id": "block_2",
+      "start": "09:45",
+      "end": "10:35",
+      "label": "UX prep",
+      "block_kind": "task_block",
+      "task_ids": ["task_ux_prep"],
+      "notes": [
+        "Focus on defining the call purpose and desired outcome"
+      ]
+    },
+    {
+      "id": "block_3",
+      "start": "10:35",
+      "end": "10:50",
+      "label": "Unblocker burst",
+      "block_kind": "task_block",
+      "task_ids": ["task_123", "task_456"],
+      "notes": [
+        "Hard stop after 15 minutes"
+      ]
+    },
+    {
+      "id": "block_4",
+      "start": "12:20",
+      "end": "12:50",
+      "label": "Lunch",
+      "block_kind": "title_only",
+      "task_ids": [],
+      "notes": []
+    }
+  ],
+  "unscheduled_task_ids": ["task_789"],
+  "planning_notes": [
+    "Only one GTN task fits today",
+    "Some tasks were left unscheduled on purpose"
+  ]
+}
+```
+
+#### Notes on the import
+
+* Blocks should render in chronological order
+* Each block should show its label, time, and notes
+* If a block contains task_ids, resolve those against the real existing task records in Nudge
+* If an ID in the import does not exist, show a visible warning rather than failing silently
+* Unscheduled tasks should be shown in a separate section at the bottom
+
+### 3. Rendering behaviour
+
+Each block on the Day Plan page should display:
+
+* the block time
+* the block label
+* any notes
+* linked tasks, if there are any
+
+Tasks shown inside a block should behave like their normal Nudge rows as far as possible:
+
+* same title
+* same status
+* same ticking/completion behaviour
+* synced with the underlying record
+
+Non-task blocks such as control tower, buffer, lunch, prep, and close-down should still render clearly even if they contain no linked tasks.
+
+### 4. Clear and replace behaviour
+
+The Day Plan page should support clearing the current imported plan.
+
+The simplest MVP behaviour is:
+
+* one imported plan per date
+* importing a new plan for the same date replaces the old one after confirmation
+* Clear removes the imported structure for that date, but does not delete tasks themselves
+
+### 5. Data model guidance
+
+Keep the Day Plan model separate from the task system.
+
+Suggested model:
+
+* DayPlan
+
+  * date
+  * source_export_json
+  * imported_plan_json
+  * created_at
+  * updated_at
+
+You may also store parsed block records if useful for rendering, but the important thing is that the Day Plan references existing task IDs rather than duplicating tasks.
+
+### 6. UI guidance
+
+Keep the page very simple.
+
+Suggested layout:
+
+* page header: Day Plan
+* buttons: Import, Clear
+* optional area for planning notes
+* main section: chronological blocks
+* bottom section: Unscheduled tasks
+
+Each block should look like a grouped section, for example:
+
+* header row with time + label
+* notes beneath
+* any linked tasks shown below that
+
+Do not overdesign this. The main point is clarity and ease of use.
+
+### 7. Validation and edge cases
+
+Handle these cases:
+
+* imported JSON is invalid
+* imported JSON is valid JSON but wrong shape
+* referenced task ID does not exist
+* duplicate block IDs
+* overlapping blocks
+* no unscheduled tasks
+* empty notes arrays
+* import for a date with no current Today task data
+
+Show useful error messages.
+
+### 8. What not to build in this MVP
+
+Do not build:
+
+* drag and drop rescheduling
+* automatic AI calls from inside Nudge
+* auto-regeneration of the plan when tasks change
+* long-term planning across multiple days
+* time estimation engines
+* complex calendar sync logic
+* a separate duplicate copy of tasks
+* exports of chases or meetings for this feature
+
+This should stay lightweight.
+
+### 9. What success looks like
+
+The result should let me:
+
+* export today’s tasks from Nudge
+* get a proposed plan from ChatGPT
+* import that plan into Nudge
+* see my day as a sequence of blocks
+* work through tasks in block order
+* tick off tasks from that page and have them sync properly
+* clearly see what was not scheduled
+
+### 10. What I want from you now
+
+Please do not start coding immediately.
+
+First:
+
+* review this feature request critically
+* identify any missing decisions or contradictions
+* propose a clean MVP scope
+* suggest the simplest data model and UI structure
+* point out any risks in the import/export design
+* recommend any changes to the JSON formats before implementation
+
+Then, once the plan is sound, outline the implementation steps in order.
+
+I will separately create the ChatGPT-side prompt that takes the exported JSON and returns the day-plan JSON in the exact format above.

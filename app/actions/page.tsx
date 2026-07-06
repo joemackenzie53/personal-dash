@@ -140,12 +140,17 @@ export default function ActionsPage() {
   const open = actions.filter((a) => a.status === "open");
   const done = actions.filter((a) => a.status === "done");
 
+  const PRIORITY_ORDER: Record<string, number> = { high: 0, med: 1, low: 2 };
+  function sortByPriority<T extends { priority: string }>(arr: T[]): T[] {
+    return [...arr].sort((a, b) => (PRIORITY_ORDER[a.priority] ?? 3) - (PRIORITY_ORDER[b.priority] ?? 3));
+  }
+
   const todayStart = startOfDay(new Date());
   const tomorrowStart = addDays(todayStart, 1);
-  const overdue = open.filter((a) => a.due_at && new Date(a.due_at) < tomorrowStart);
-  const dueSoon = open.filter((a) => a.due_at && new Date(a.due_at) >= tomorrowStart && new Date(a.due_at) <= addDays(todayStart, 4));
-  const upcoming = open.filter((a) => a.due_at && new Date(a.due_at) > addDays(todayStart, 4));
-  const unscheduled = open.filter((a) => !a.due_at);
+  const overdue = sortByPriority(open.filter((a) => a.due_at && new Date(a.due_at) < tomorrowStart));
+  const dueSoon = sortByPriority(open.filter((a) => a.due_at && new Date(a.due_at) >= tomorrowStart && new Date(a.due_at) <= addDays(todayStart, 4)));
+  const upcoming = sortByPriority(open.filter((a) => a.due_at && new Date(a.due_at) > addDays(todayStart, 4)));
+  const unscheduled = sortByPriority(open.filter((a) => !a.due_at));
 
   function renderActionRow(a: ActionRow, tone?: "red" | "amber") {
     const isDone = a.status === "done";
