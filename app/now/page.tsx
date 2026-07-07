@@ -1,5 +1,6 @@
 "use client";
 import * as React from "react";
+import { flushSync } from "react-dom";
 import Link from "next/link";
 import { api } from "@/lib/client";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
@@ -87,6 +88,8 @@ export default function NowPage() {
   const [newDue, setNewDue] = React.useState<string>("");
   const [newParent, setNewParent] = React.useState<string>("");
   const [adding, setAdding] = React.useState(false);
+  const [syncing, setSyncing] = React.useState(false);
+  const [syncMsg, setSyncMsg] = React.useState<string | null>(null);
 
   const [selectMode, setSelectMode] = React.useState(false);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
@@ -122,12 +125,18 @@ export default function NowPage() {
   }, []);
 
   async function runSync() {
-    setErr(null);
+    flushSync(() => {
+      setSyncMsg("Sync in progress…");
+      setSyncing(true);
+    });
     try {
-      await api("/api/sync", { method: "POST" });
+      const res = await api<any>("/api/sync", { method: "POST" });
+      setSyncMsg(`Sync complete — ${res.calendarsSynced} calendar${res.calendarsSynced !== 1 ? "s" : ""}, ${res.eventsUpserted} events.`);
       await load();
     } catch (e: any) {
-      setErr(e?.message || "Sync failed");
+      setSyncMsg(`Sync failed: ${e?.message || "unknown error"}`);
+    } finally {
+      setSyncing(false);
     }
   }
 
@@ -375,7 +384,7 @@ export default function NowPage() {
               <span>{pastDue.length}</span>
             </button>
           )}
-          <Button onClick={runSync} disabled={loading}>Sync</Button>
+          <Button onClick={runSync} disabled={syncing || loading}>{syncing ? "Syncing…" : "Sync"}</Button>
           <Button variant="secondary" onClick={() => setShowExport(true)}>Export JSON</Button>
         </div>
       </div>
@@ -389,6 +398,12 @@ export default function NowPage() {
           ) : (
             err
           )}
+        </Notice>
+      )}
+
+      {syncMsg && (
+        <Notice tone={syncMsg === "Sync in progress…" ? "amber" : syncMsg.startsWith("Sync failed") ? "red" : "green"}>
+          {syncMsg}
         </Notice>
       )}
 
