@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/session";
 import { getDb, jsonParse, jsonStringify } from "@/lib/db";
 import { newId } from "@/lib/id";
 import { propagateToAllSiblings } from "@/lib/templates";
+import { isValidPriority } from "@/lib/priority";
 
 export async function GET(req: Request) {
   try {
@@ -73,7 +74,7 @@ export async function POST(req: Request) {
       id,
       title,
       status: "open",
-      priority: body?.priority === "high" || body?.priority === "low" ? body.priority : "med",
+      priority: isValidPriority(body?.priority) ? body.priority : "med",
       start_at: typeof body?.startAt === "string" ? body.startAt : null,
       due_at: typeof body?.dueAt === "string" ? body.dueAt : null,
       snooze_until: typeof body?.snoozeUntil === "string" ? body.snoozeUntil : null,

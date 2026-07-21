@@ -1,0 +1,180 @@
+Please implement a focused improvement to action creation and priority levels in the Personal Dash app.
+
+Goal:
+
+1. Make action quick-add capable of entering all fields that can be edited later in the action modal.
+2. Change priority from 3 levels to 5 levels: very low, low, medium, high, very high.
+
+Important constraints:
+
+* Keep this cost-controlled and focused.
+* Do not redesign the whole app.
+* Do not work on Google sync.
+* Do not implement recurring actions.
+* Do not change Projects, Horizon, Triage, or Settings unless required by shared action priority logic.
+* Do not add new dependencies unless absolutely necessary.
+* Keep the mobile UI clean and usable.
+* Preserve existing actions and existing priority values.
+
+PART 1 — Action quick-add should support all editable action fields
+
+Context:
+Right now quick-add is too limited. When creating an action, I should be able to enter the same fields that I can later edit on the action.
+
+Please update the action quick-add UI on relevant pages, especially:
+
+* Now page
+* Actions page
+
+Required fields to support on create, where already supported by the action model/modal:
+
+* title
+* priority
+* status if currently editable
+* due_at / due date
+* start_at / start date
+* snooze_until / snooze until
+* description
+* parent_type and parent_id if current quick-add already supports linking to event/project
+* reference_url if editable
+* tags if editable
+* checklist if editable
+* any other action fields that are currently editable in ActionDetailModal
+
+Mobile UX requirement:
+
+* Do not make the quick-add area enormous by default.
+* Keep the basic quick-add compact.
+* Add a “More fields” / “Advanced” toggle to reveal the extra fields.
+* The default visible quick-add should probably include:
+
+  * title
+  * priority
+  * due date if currently visible
+  * Add button
+* The expanded section can include:
+
+  * start date
+  * snooze until
+  * description
+  * tags/checklist/reference URL/parent link where applicable
+* Use simple native inputs where possible.
+* Do not build custom date pickers.
+
+Required behaviour:
+
+* Creating an action through quick-add should persist all entered fields.
+* After creation succeeds, refresh the action list from the server.
+* If creation fails, show a visible error.
+* Do not show a fake success if the database insert failed.
+* Do not clear the form until creation has succeeded.
+* Existing simple quick-add behaviour should still work.
+
+Acceptance criteria:
+
+* I can create a simple action quickly with just a title.
+* I can expand “More fields” and create an action with start date, due date, snooze date, priority, and description.
+* The created action appears immediately after save.
+* After refreshing the browser, the created action is still there with the correct fields.
+* The quick-add remains usable on mobile.
+
+PART 2 — Change priority from 3 levels to 5 levels
+
+Current priority values:
+
+* low
+* med
+* high
+
+New priority values:
+
+* very_low
+* low
+* med
+* high
+* very_high
+
+User-facing labels:
+
+* Very low
+* Low
+* Medium
+* High
+* Very high
+
+Please update all relevant places priority appears:
+
+* action creation forms
+* action edit modal
+* action rows / badges
+* bulk select priority update
+* priority sorting
+* JSON export if it labels or transforms priority
+* any API validation or normalization
+* any TypeScript types or constants
+
+Sorting order:
+
+1. very_high
+2. high
+3. med
+4. low
+5. very_low
+6. missing/unknown
+
+Backward compatibility:
+
+* Existing actions with low/med/high must continue to work.
+* Do not require a migration of existing low/med/high values.
+* If any code assumes only three priority values, update it.
+* If there is a central priority helper/constant, use that rather than duplicating logic everywhere.
+* If there is not a central helper, create a small shared constant/helper only if it reduces duplication without causing a broad refactor.
+
+Visual guidance:
+
+* Keep priority badges compact.
+* Do not make rows visually noisy.
+* Very high should appear more important than high.
+* Very low should appear less important than low.
+* Preserve the existing visual style as much as possible.
+
+Acceptance criteria:
+
+* I can choose Very low, Low, Medium, High, or Very high when creating an action.
+* I can choose all five levels when editing an action.
+* I can bulk update selected actions to any of the five priority levels.
+* Sorting puts Very high above High, then Medium, then Low, then Very low.
+* Existing low/med/high actions still display and sort correctly.
+* No existing actions disappear because of priority changes.
+
+Implementation guidance:
+
+* First inspect relevant files only.
+* Likely files include:
+
+  * app/now/page.tsx
+  * app/actions/page.tsx
+  * components/ActionDetailModal.tsx
+  * app/api/actions/route.ts
+  * app/api/actions/[id]/route.ts
+  * any bulk update route if one exists
+  * any shared action/date/priority helper if one exists
+* Avoid broad refactors.
+* Do not change the database schema unless there is an explicit enum/check constraint that prevents the new values.
+* If there is a database constraint limiting priority to low/med/high, update it carefully and explain the migration.
+* If priority is just stored as text, no schema change should be needed.
+
+After implementing:
+
+* Summarise exactly which files changed.
+* Explain how quick-add now works.
+* Explain how the five priority levels work.
+* Explain any database/schema changes, if any.
+* Give manual test steps for:
+
+  * simple quick-add
+  * expanded quick-add with all fields
+  * editing priority
+  * bulk priority update
+  * priority sorting
+  * browser refresh persistence

@@ -193,9 +193,11 @@ export function ActionDetailModal({ action, projects, events, onClose, onSaved }
             <div className="space-y-1">
               <div className="text-xs font-medium text-neutral-600">Priority</div>
               <Select value={priority} onChange={(e) => setPriority(e.target.value)}>
+                <option value="very_high">Very high</option>
                 <option value="high">High</option>
                 <option value="med">Medium</option>
                 <option value="low">Low</option>
+                <option value="very_low">Very low</option>
               </Select>
             </div>
           </div>

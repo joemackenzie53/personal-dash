@@ -63,6 +63,11 @@ export default function ActionsPage() {
   const [newTitle, setNewTitle] = React.useState("");
   const [newDue, setNewDue] = React.useState("");
   const [newParent, setNewParent] = React.useState("");
+  const [newPriority, setNewPriority] = React.useState("med");
+  const [newStartAt, setNewStartAt] = React.useState("");
+  const [newSnoozeUntil, setNewSnoozeUntil] = React.useState("");
+  const [newDesc, setNewDesc] = React.useState("");
+  const [showAdvanced, setShowAdvanced] = React.useState(false);
   const [adding, setAdding] = React.useState(false);
 
   async function load() {
@@ -94,6 +99,8 @@ export default function ActionsPage() {
     setErr(null);
     try {
       const dueAt = newDue ? new Date(newDue).toISOString() : null;
+      const startAt = newStartAt ? new Date(newStartAt).toISOString() : null;
+      const snoozeUntil = newSnoozeUntil ? new Date(newSnoozeUntil).toISOString() : null;
       let parentType: string | null = null;
       let parentId: string | null = null;
       if (newParent) {
@@ -103,11 +110,24 @@ export default function ActionsPage() {
       }
       await api("/api/actions", {
         method: "POST",
-        body: JSON.stringify({ title: newTitle.trim(), dueAt, parentType, parentId }),
+        body: JSON.stringify({
+          title: newTitle.trim(),
+          priority: newPriority,
+          dueAt,
+          startAt,
+          snoozeUntil,
+          description: newDesc.trim() || null,
+          parentType,
+          parentId,
+        }),
       });
       setNewTitle("");
       setNewDue("");
       setNewParent("");
+      setNewPriority("med");
+      setNewStartAt("");
+      setNewSnoozeUntil("");
+      setNewDesc("");
       await load();
     } catch (e: any) {
       setErr(e?.message || "Failed to add action");
@@ -186,9 +206,9 @@ export default function ActionsPage() {
   const open = actions.filter((a) => a.status === "open");
   const done = actions.filter((a) => a.status === "done");
 
-  const PRIORITY_ORDER: Record<string, number> = { high: 0, med: 1, low: 2 };
+  const PRIORITY_ORDER: Record<string, number> = { very_high: 0, high: 1, med: 2, low: 3, very_low: 4 };
   function sortByPriority<T extends { priority: string }>(arr: T[]): T[] {
-    return [...arr].sort((a, b) => (PRIORITY_ORDER[a.priority] ?? 3) - (PRIORITY_ORDER[b.priority] ?? 3));
+    return [...arr].sort((a, b) => (PRIORITY_ORDER[a.priority] ?? 5) - (PRIORITY_ORDER[b.priority] ?? 5));
   }
 
   const todayStart = startOfDay(new Date());
@@ -228,10 +248,12 @@ export default function ActionsPage() {
             </span>
           </button>
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className={`text-sm font-medium ${isDone ? "line-through text-neutral-400" : ""}`}>{a.title}</span>
-              {a.priority === "high" && !isDone && <Badge tone="red">high</Badge>}
-              {a.priority === "low" && !isDone && <Badge tone="neutral">low</Badge>}
+              {!isDone && a.priority === "very_high" && <Badge tone="red">!! high</Badge>}
+              {!isDone && a.priority === "high" && <Badge tone="red">high</Badge>}
+              {!isDone && a.priority === "low" && <Badge tone="neutral">low</Badge>}
+              {!isDone && a.priority === "very_low" && <Badge tone="neutral">very low</Badge>}
             </div>
             <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-neutral-500">
               {a.due_at && <span className="text-neutral-600">{fmtDate(a.due_at)}</span>}
@@ -284,33 +306,79 @@ export default function ActionsPage() {
           <div className="text-sm font-semibold">Add action</div>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-2 sm:grid-cols-[1fr,160px,180px,auto]">
+          <div className="flex flex-wrap gap-2 sm:flex-nowrap">
             <Input
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
               placeholder="What needs to be done?"
               onKeyDown={(e) => { if (e.key === "Enter" && newTitle.trim()) addAction(); }}
+              className="flex-1 min-w-0"
             />
-            <Input type="date" value={newDue} onChange={(e) => setNewDue(e.target.value)} />
-            <Select value={newParent} onChange={(e) => setNewParent(e.target.value)} className="text-sm">
-              <option value="">No link</option>
-              {projects.length > 0 && (
-                <optgroup label="Projects">
-                  {projects.map((p) => (
-                    <option key={p.id} value={`project:${p.id}`}>{p.name}</option>
-                  ))}
-                </optgroup>
-              )}
-              {events.length > 0 && (
-                <optgroup label="Upcoming events">
-                  {events.slice(0, 15).map((e) => (
-                    <option key={e.event_key} value={`event:${e.event_key}`}>{e.title || "(no title)"}</option>
-                  ))}
-                </optgroup>
-              )}
-            </Select>
+            <Input type="date" value={newDue} onChange={(e) => setNewDue(e.target.value)} className="w-36 shrink-0" />
             <Button onClick={addAction} disabled={!newTitle.trim() || adding}>{adding ? "Adding…" : "Add"}</Button>
+            <button
+              type="button"
+              onClick={() => setShowAdvanced((v) => !v)}
+              className="shrink-0 rounded-lg border border-neutral-200 px-2.5 py-1.5 text-xs font-medium text-neutral-600 hover:bg-neutral-50"
+            >
+              {showAdvanced ? "Less ▴" : "More ▾"}
+            </button>
           </div>
+
+          {showAdvanced && (
+            <div className="mt-3 space-y-3 rounded-lg border border-neutral-200 bg-neutral-50 p-3">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="space-y-1">
+                  <div className="text-xs font-medium text-neutral-600">Priority</div>
+                  <Select value={newPriority} onChange={(e) => setNewPriority(e.target.value)} className="text-sm">
+                    <option value="very_high">Very high</option>
+                    <option value="high">High</option>
+                    <option value="med">Medium</option>
+                    <option value="low">Low</option>
+                    <option value="very_low">Very low</option>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-xs font-medium text-neutral-600">Start date</div>
+                  <Input type="date" value={newStartAt} onChange={(e) => setNewStartAt(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <div className="text-xs font-medium text-neutral-600">Snooze until</div>
+                  <Input type="date" value={newSnoozeUntil} onChange={(e) => setNewSnoozeUntil(e.target.value)} />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-xs font-medium text-neutral-600">Link to</div>
+                <Select value={newParent} onChange={(e) => setNewParent(e.target.value)} className="text-sm">
+                  <option value="">None</option>
+                  {projects.length > 0 && (
+                    <optgroup label="Projects">
+                      {projects.map((p) => (
+                        <option key={p.id} value={`project:${p.id}`}>{p.name}</option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {events.length > 0 && (
+                    <optgroup label="Upcoming events">
+                      {events.slice(0, 15).map((e) => (
+                        <option key={e.event_key} value={`event:${e.event_key}`}>{e.title || "(no title)"}</option>
+                      ))}
+                    </optgroup>
+                  )}
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <div className="text-xs font-medium text-neutral-600">Description</div>
+                <textarea
+                  value={newDesc}
+                  onChange={(e) => setNewDesc(e.target.value)}
+                  placeholder="Optional details…"
+                  rows={2}
+                  className="w-full resize-none rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800 placeholder-neutral-400 focus:border-neutral-400 focus:outline-none"
+                />
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -440,9 +508,11 @@ export default function ActionsPage() {
               <div className="flex items-center gap-2">
                 <Select value={bulkValue} onChange={(e) => setBulkValue(e.target.value)} className="text-sm">
                   <option value="">Pick…</option>
+                  <option value="very_high">Very high</option>
                   <option value="high">High</option>
                   <option value="med">Medium</option>
                   <option value="low">Low</option>
+                  <option value="very_low">Very low</option>
                 </Select>
                 <Button size="sm" onClick={() => bulkValue && applyBulk({ priority: bulkValue })} disabled={!bulkValue || !selectedIds.size}>Set</Button>
               </div>
