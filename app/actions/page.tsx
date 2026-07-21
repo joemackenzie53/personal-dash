@@ -306,20 +306,19 @@ export default function ActionsPage() {
           <div className="text-sm font-semibold">Add action</div>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-2 sm:flex-nowrap">
+          <div className="grid grid-cols-[1fr,auto,auto] gap-2 sm:grid-cols-[1fr,160px,auto,auto]">
             <Input
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
               placeholder="What needs to be done?"
               onKeyDown={(e) => { if (e.key === "Enter" && newTitle.trim()) addAction(); }}
-              className="flex-1 min-w-0"
             />
-            <Input type="date" value={newDue} onChange={(e) => setNewDue(e.target.value)} className="w-36 shrink-0" />
+            <Input type="date" value={newDue} onChange={(e) => setNewDue(e.target.value)} className="hidden sm:block" />
             <Button onClick={addAction} disabled={!newTitle.trim() || adding}>{adding ? "Adding…" : "Add"}</Button>
             <button
               type="button"
               onClick={() => setShowAdvanced((v) => !v)}
-              className="shrink-0 rounded-lg border border-neutral-200 px-2.5 py-1.5 text-xs font-medium text-neutral-600 hover:bg-neutral-50"
+              className="rounded-lg border border-neutral-200 px-2.5 py-1.5 text-xs font-medium text-neutral-600 hover:bg-neutral-50 whitespace-nowrap"
             >
               {showAdvanced ? "Less ▴" : "More ▾"}
             </button>
